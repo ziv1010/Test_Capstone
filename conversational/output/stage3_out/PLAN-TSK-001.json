@@ -1,0 +1,86 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-04T04:19:06.696303",
+    "checksum": "34caead69d8c2a6c",
+    "version": "1.0",
+    "stage": "stage3",
+    "type": "execution_plan"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-001",
+    "selected_task_id": "TSK-001",
+    "goal": "Forecast annual food grain production in India using historical area, production, and yield data from 2020-2024",
+    "task_category": "forecasting",
+    "file_instructions": [
+      {
+        "filename": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
+        "filepath": "data/",
+        "columns_to_use": [
+          "Crop",
+          "Season",
+          "Area-2020-21",
+          "Area-2021-22",
+          "Area-2022-23",
+          "Area-2023-24",
+          "Area-2024-25",
+          "Production-2020-21",
+          "Production-2021-22",
+          "Production-2022-23",
+          "Production-2023-24",
+          "Production-2024-25",
+          "Yield-2020-21",
+          "Yield-2021-22",
+          "Yield-2022-23",
+          "Yield-2023-24",
+          "Yield-2024-25"
+        ],
+        "filters": [],
+        "parse_dates": []
+      }
+    ],
+    "join_steps": [],
+    "feature_engineering": [
+      {
+        "name": "lag_production_1yr",
+        "description": "Create 1-year lag of production values",
+        "source_columns": [
+          "Production-2023-24"
+        ],
+        "implementation_code": "df['lag_production_1yr'] = df['Production-2023-24'].shift(1)"
+      },
+      {
+        "name": "rolling_area_mean",
+        "description": "3-year rolling mean of area",
+        "source_columns": [
+          "Area-2020-21",
+          "Area-2021-22",
+          "Area-2022-23",
+          "Area-2023-24",
+          "Area-2024-25"
+        ],
+        "implementation_code": "df['rolling_area_mean'] = df[[\"Area-2020-21\", \"Area-2021-22\", \"Area-2022-23\", \"Area-2023-24\", \"Area-2024-25\"]].rolling(3).mean().iloc[:, -1]"
+      },
+      {
+        "name": "season_category",
+        "description": "Encode season as categorical feature",
+        "source_columns": [
+          "Season"
+        ],
+        "implementation_code": "df['season_category'] = df['Season'].astype('category').cat.codes"
+      }
+    ],
+    "target_column": "Production-2024-25",
+    "date_column": "Year (derived from column names)",
+    "validation_strategy": "temporal",
+    "expected_model_types": [
+      "ARIMA",
+      "Random Forest Regressor",
+      "XGBoost Regressor"
+    ],
+    "evaluation_metrics": [
+      "MAE",
+      "RMSE",
+      "R²"
+    ]
+  }
+}

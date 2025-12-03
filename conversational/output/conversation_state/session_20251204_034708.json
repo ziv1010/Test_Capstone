@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-04T03:48:37.289073",
+    "checksum": "d58c829fe7c414e5",
+    "version": "1.0"
+  },
+  "data": {
+    "session_id": "session_20251204_034708",
+    "messages": [
+      {
+        "role": "user",
+        "content": "\u001b[Astatus",
+        "timestamp": "2025-12-04 03:48:30.486704",
+        "metadata": {}
+      }
+    ],
+    "current_intent": null,
+    "pipeline_state": null,
+    "available_summaries": [],
+    "available_proposals": [],
+    "current_task_id": null,
+    "preferred_task_category": null,
+    "custom_query": null,
+    "created_at": "2025-12-04 03:47:08.325582",
+    "last_updated": "2025-12-04 03:48:30.486744"
+  }
+}

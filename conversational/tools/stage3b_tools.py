@@ -16,9 +16,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from code.config import (
     DATA_DIR, STAGE3_OUT_DIR, STAGE3B_OUT_DIR,
-    DataPassingManager, logger
+    DataPassingManager, logger, DEBUG
 )
-from code.utils import load_dataframe, execute_python_sandbox, safe_json_dumps
+from code.utils import (
+    load_dataframe,
+    execute_python_sandbox,
+    safe_json_dumps,
+    PythonSandbox,
+)
 
 
 # State tracking for ReAct framework
@@ -109,6 +114,10 @@ def record_thought(thought: str, next_action: str) -> str:
         "step": len(_stage3b_thoughts) + 1
     }
     _stage3b_thoughts.append(entry)
+    
+    if DEBUG:
+        logger.debug(f"THOUGHT: {thought}")
+        logger.debug(f"NEXT ACTION: {next_action}")
 
     return f"Thought #{entry['step']} recorded. Proceeding with: {next_action}"
 
@@ -134,6 +143,9 @@ def record_observation(what_happened: str, what_learned: str, next_step: str) ->
         "step": len(_stage3b_observations) + 1
     }
     _stage3b_observations.append(entry)
+    
+    if DEBUG:
+        logger.debug(f"OBSERVATION: {what_learned}")
 
     return f"Observation #{entry['step']} recorded. Key insight: {what_learned}"
 
@@ -162,7 +174,16 @@ def run_data_prep_code(code: str, description: str = "") -> str:
         'STAGE3_OUT_DIR': STAGE3_OUT_DIR,
         'STAGE3B_OUT_DIR': STAGE3B_OUT_DIR,
     }
-    return execute_python_sandbox(code, additional, description)
+    
+    if DEBUG:
+        logger.debug(f"Running Data Prep Code:\n{code}")
+        
+    result = execute_python_sandbox(code, additional, description)
+    
+    if DEBUG:
+        logger.debug(f"Code Output:\n{result}")
+        
+    return result
 
 
 @tool
@@ -230,7 +251,10 @@ def save_prepared_data(
     """
     try:
         # Execute code to get DataFrame
-        success, output, namespace = execute_python_sandbox(data_code, {}, "Create prepared DataFrame")
+        # Use PythonSandbox.execute so we can inspect the returned namespace
+        success, output, namespace = PythonSandbox.execute(
+            data_code, {}, "Create prepared DataFrame"
+        )
 
         if not success or 'df' not in namespace:
             return f"Error: Code must create a 'df' DataFrame.\nOutput: {output}"

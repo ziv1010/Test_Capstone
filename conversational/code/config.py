@@ -19,7 +19,7 @@ from datetime import datetime
 # PROJECT PATHS
 # ============================================================================
 
-PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", "/scratch/ziv_baretto/llmserve"))
+PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational"))
 DATA_DIR = PROJECT_ROOT / "data"
 OUTPUT_ROOT = PROJECT_ROOT / "output"
 
@@ -73,7 +73,7 @@ SECONDARY_LLM_CONFIG = {
 CONVERSATION_LLM_CONFIG = {
     "base_url": LLM_BASE_URL,
     "api_key": LLM_API_KEY,
-    "model": "Qwen/Qwen2.5-32B-Instruct",
+    "model": "Qwen/Qwen3-32B",
     "temperature": 0.2,  # Slightly higher for more natural conversation
     "max_tokens": 2048,
 }
@@ -104,6 +104,9 @@ MIN_UNIQUE_FRACTION = 0.01   # Minimum 1% unique values
 # Benchmarking parameters
 BENCHMARK_ITERATIONS = 3
 MAX_CV_THRESHOLD = 0.3  # Maximum coefficient of variation for valid results
+
+# Global recursion limit for LangGraph
+RECURSION_LIMIT = 150
 
 # ============================================================================
 # ROBUST DATA PASSING MECHANISMS
@@ -456,8 +459,14 @@ class JSONSanitizer:
 
 import logging
 
-def setup_logging(level: str = "INFO") -> logging.Logger:
+# Debug configuration
+DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+
+def setup_logging(level: str = None) -> logging.Logger:
     """Setup logging for the pipeline."""
+    if level is None:
+        level = "DEBUG" if DEBUG else "INFO"
+        
     logger = logging.getLogger("conversational_pipeline")
     logger.setLevel(getattr(logging, level.upper()))
 
@@ -491,9 +500,9 @@ __all__ = [
     # Parameters
     "STAGE_MAX_ROUNDS", "STAGE1_SAMPLE_ROWS",
     "MIN_NON_NULL_FRACTION", "MIN_UNIQUE_FRACTION",
-    "BENCHMARK_ITERATIONS", "MAX_CV_THRESHOLD",
+    "BENCHMARK_ITERATIONS", "MAX_CV_THRESHOLD", "RECURSION_LIMIT",
     # Classes
     "DataPassingManager", "StageTransition", "JSONSanitizer",
     # Utilities
-    "logger", "setup_logging",
+    "logger", "setup_logging", "DEBUG",
 ]

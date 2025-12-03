@@ -15,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from code.config import (
     DATA_DIR, SUMMARIES_DIR, STAGE2_OUT_DIR, STAGE3_OUT_DIR,
-    STAGE3B_OUT_DIR, STAGE4_OUT_DIR, STAGE5_OUT_DIR,
+    STAGE3B_OUT_DIR, STAGE3_5A_OUT_DIR, STAGE3_5B_OUT_DIR,
+    STAGE4_OUT_DIR, STAGE5_OUT_DIR,
     CONVERSATION_STATE_DIR, DataPassingManager, logger
 )
 from code.utils import list_data_files, list_summary_files, load_dataframe

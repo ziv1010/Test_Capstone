@@ -1,0 +1,293 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-04T03:26:03.593646",
+    "checksum": "04ddbe82939047b7",
+    "version": "1.0",
+    "stage": "stage1",
+    "type": "dataset_summary"
+  },
+  "data": {
+    "filename": "All-India-profile_-Crop-wise-Area.csv",
+    "filepath": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/data/All-India-profile_-Crop-wise-Area.csv",
+    "n_rows": 104,
+    "n_cols": 12,
+    "columns": [
+      {
+        "name": "Crop",
+        "dtype": "object",
+        "logical_type": "categorical",
+        "null_fraction": 0.0,
+        "unique_fraction": 0.3557692307692308,
+        "n_unique": 37,
+        "examples": [
+          "Rice",
+          "Rice",
+          "Rice",
+          "Rice",
+          "Wheat"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "mean_value": null,
+        "std_value": null,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Season",
+        "dtype": "object",
+        "logical_type": "categorical",
+        "null_fraction": 0.0,
+        "unique_fraction": 0.038461538461538464,
+        "n_unique": 4,
+        "examples": [
+          "Kharif",
+          "Rabi",
+          "Summer",
+          "Total",
+          "Rabi"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "mean_value": null,
+        "std_value": null,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Area-2015-16",
+        "dtype": "float64",
+        "logical_type": "float",
+        "null_fraction": 0.21153846153846154,
+        "unique_fraction": 0.5769230769230769,
+        "n_unique": 60,
+        "examples": [
+          396.56,
+          38.43,
+          434.99,
+          304.18,
+          304.18
+        ],
+        "min_value": 0.54,
+        "max_value": 1232.18,
+        "mean_value": 117.07170731707316,
+        "std_value": 211.5539771113202,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Area-2016-17",
+        "dtype": "float64",
+        "logical_type": "float",
+        "null_fraction": 0.21153846153846154,
+        "unique_fraction": 0.5769230769230769,
+        "n_unique": 60,
+        "examples": [
+          398.46,
+          41.48,
+          439.93,
+          307.85,
+          307.85
+        ],
+        "min_value": 0.57,
+        "max_value": 1292.33,
+        "mean_value": 121.11378048780486,
+        "std_value": 218.82327250371512,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Area-2017-18",
+        "dtype": "float64",
+        "logical_type": "float",
+        "null_fraction": 0.21153846153846154,
+        "unique_fraction": 0.5865384615384616,
+        "n_unique": 61,
+        "examples": [
+          393.49,
+          44.25,
+          437.74,
+          296.51,
+          296.51
+        ],
+        "min_value": 0.56,
+        "max_value": 1275.24,
+        "mean_value": 119.25012195121951,
+        "std_value": 215.34114577327742,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Area-2018-19",
+        "dtype": "float64",
+        "logical_type": "float",
+        "null_fraction": 0.21153846153846154,
+        "unique_fraction": 0.5865384615384616,
+        "n_unique": 61,
+        "examples": [
+          399.64,
+          41.92,
+          441.56,
+          293.19,
+          293.19
+        ],
+        "min_value": 0.4,
+        "max_value": 1247.74,
+        "mean_value": 116.50878048780484,
+        "std_value": 211.66221966976408,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Area-2019-20",
+        "dtype": "float64",
+        "logical_type": "float",
+        "null_fraction": 0.21153846153846154,
+        "unique_fraction": 0.5865384615384616,
+        "n_unique": 61,
+        "examples": [
+          390.13,
+          46.49,
+          436.62,
+          313.57,
+          313.57
+        ],
+        "min_value": 0.45,
+        "max_value": 1269.95,
+        "mean_value": 120.12353658536584,
+        "std_value": 215.98699503243387,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Area-2020-21",
+        "dtype": "float64",
+        "logical_type": "float",
+        "null_fraction": 0.21153846153846154,
+        "unique_fraction": 0.5865384615384616,
+        "n_unique": 61,
+        "examples": [
+          403.58,
+          54.11,
+          457.69,
+          311.25,
+          311.25
+        ],
+        "min_value": 0.41,
+        "max_value": 1297.95,
+        "mean_value": 122.99134146341464,
+        "std_value": 220.86779017144013,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Area-2021-22",
+        "dtype": "float64",
+        "logical_type": "float",
+        "null_fraction": 0.15384615384615385,
+        "unique_fraction": 0.6153846153846154,
+        "n_unique": 64,
+        "examples": [
+          410.38,
+          52.4,
+          462.79,
+          304.59,
+          304.59
+        ],
+        "min_value": 0.13,
+        "max_value": 1301.69,
+        "mean_value": 114.83954545454547,
+        "std_value": 214.4512490853662,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Area-2022-23",
+        "dtype": "float64",
+        "logical_type": "float",
+        "null_fraction": 0.0,
+        "unique_fraction": 0.7884615384615384,
+        "n_unique": 82,
+        "examples": [
+          404.03,
+          43.28,
+          31.01,
+          478.32,
+          314.01
+        ],
+        "min_value": 0.12,
+        "max_value": 1322.04,
+        "mean_value": 99.53644230769231,
+        "std_value": 202.911207124053,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Area-2023-24",
+        "dtype": "float64",
+        "logical_type": "float",
+        "null_fraction": 0.0,
+        "unique_fraction": 0.7788461538461539,
+        "n_unique": 81,
+        "examples": [
+          407.34,
+          40.76,
+          30.18,
+          478.28,
+          318.33
+        ],
+        "min_value": 0.09,
+        "max_value": 1321.04,
+        "mean_value": 99.61326923076923,
+        "std_value": 203.61155215210871,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      },
+      {
+        "name": "Area-2024-25",
+        "dtype": "float64",
+        "logical_type": "float",
+        "null_fraction": 0.057692307692307696,
+        "unique_fraction": 0.7596153846153846,
+        "n_unique": 79,
+        "examples": [
+          434.13,
+          44.74,
+          35.36,
+          514.23,
+          327.61
+        ],
+        "min_value": 0.22,
+        "max_value": 1372.94,
+        "mean_value": 107.85520408163264,
+        "std_value": 217.37349110106106,
+        "min_date": null,
+        "max_date": null,
+        "date_frequency": null
+      }
+    ],
+    "candidate_keys": [],
+    "file_size_mb": 0.009455680847167969,
+    "created_at": "2025-12-04 03:26:03.593569",
+    "has_datetime_column": false,
+    "has_target_candidates": [
+      "Area-2015-16",
+      "Area-2016-17",
+      "Area-2017-18",
+      "Area-2018-19",
+      "Area-2019-20"
+    ],
+    "data_quality_score": 0.8766025641025641
+  }
+}

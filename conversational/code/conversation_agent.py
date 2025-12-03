@@ -249,15 +249,28 @@ class ConversationHandler:
 
         # Check for run/execute intent
         if any(word in user_lower for word in ["run", "execute", "start", "do"]):
-            # Try to extract task ID
+            # Try to extract task ID with flexible parsing
             import re
-            task_match = re.search(r'(TSK-\d+)', user_message.upper())
+            
+            # Try to match TSK-digits pattern
+            task_match = re.search(r'tsk[- ]?(\d+)', user_lower)
             if task_match:
-                return {
-                    "action": "run_pipeline",
-                    "task_id": task_match.group(1),
-                    "stages": ["stage3", "stage3b", "stage3_5a", "stage3_5b", "stage4", "stage5"]
-                }
+                task_num = task_match.group(1)
+                # Normalize to TSK-XXX format (zero-padded to 3 digits if <=999)
+                if len(task_num) <= 3:
+                    task_id = f"TSK-{int(task_num):03d}"
+                else:
+                    task_id = f"TSK-{task_num}"
+                
+                # Validate task exists by checking task_proposals.json
+                task_id = self._validate_task_id(task_id, task_num)
+                
+                if task_id:
+                    return {
+                        "action": "run_pipeline",
+                        "task_id": task_id,
+                        "stages": ["stage3", "stage3b", "stage3_5a", "stage3_5b", "stage4", "stage5"]
+                    }
 
         # Check for analyze/summarize intent (stages 1-2)
         if any(word in user_lower for word in ["analyze", "summarize", "profile"]):
@@ -269,6 +282,59 @@ class ConversationHandler:
                 }
 
         return {"action": None, "task_id": None, "stages": []}
+    
+    def _validate_task_id(self, task_id: str, task_num: str) -> Optional[str]:
+        """
+        Validate that a task ID exists in task proposals.
+        
+        Args:
+            task_id: Normalized task ID (e.g., "TSK-001")
+            task_num: Raw number from user input (e.g., "1", "001", "9586")
+            
+        Returns:
+            Valid task ID or None if not found
+        """
+        from code.config import STAGE2_OUT_DIR
+        import json
+        
+        proposals_path = STAGE2_OUT_DIR / "task_proposals.json"
+        if not proposals_path.exists():
+            logger.warning("Task proposals not found. Unable to validate task ID.")
+            return task_id  # Return as-is if we can't validate
+        
+        try:
+            # Load task proposals directly with JSON
+            with open(proposals_path, 'r') as f:
+                proposals_data = json.load(f)
+            
+            available_tasks = proposals_data.get("data", {}).get("proposals", [])
+            
+            # Build map of task IDs
+            task_ids = {task["id"] for task in available_tasks}
+            
+            # Direct match
+            if task_id in task_ids:
+                logger.info(f"Task {task_id} validated")
+                return task_id
+            
+            # Try alternate formats
+            alternates = [
+                f"TSK-{task_num}",  # Raw number
+                f"TSK-{int(task_num)}",  # Unpadded
+            ]
+            
+            for alt in alternates:
+                if alt in task_ids:
+                    logger.info(f"Task {task_num} matched to {alt}")
+                    return alt
+            
+            # No match found
+            logger.warning(f"Task {task_id} not found. Available: {sorted(task_ids)}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error validating task ID: {e}")
+            return task_id  # Return as-is on error
 
     def get_conversation_history(self) -> List[Dict[str, str]]:
         """Get conversation history."""

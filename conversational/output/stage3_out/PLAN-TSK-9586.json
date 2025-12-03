@@ -1,0 +1,64 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-04T03:39:38.574352",
+    "checksum": "4754cde4bf502f24",
+    "version": "1.0",
+    "stage": "stage3",
+    "type": "execution_plan"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-9586",
+    "selected_task_id": "TSK-9586",
+    "goal": "Forecast Food Grain Production in India for 2024-25",
+    "task_category": "forecasting",
+    "file_instructions": [
+      {
+        "filename": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
+        "filepath": "/data/All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
+        "columns_to_use": [
+          "Crop",
+          "Season",
+          "Area-2023-24",
+          "Production-2023-24",
+          "Yield-2023-24",
+          "Production-2024-25"
+        ],
+        "filters": [
+          "Crop.isin([\"Rice\", \"Wheat\"])",
+          "Season.isin([\"Kharif\", \"Rabi\", \"Total\"])"
+        ]
+      }
+    ],
+    "feature_engineering": [
+      {
+        "name": "lag_production",
+        "description": "1-year lag of production",
+        "source_columns": [
+          "Production-2023-24"
+        ],
+        "implementation_code": "df['lag_production'] = df['Production-2023-24']"
+      },
+      {
+        "name": "rolling_avg_area",
+        "description": "3-season rolling average of area",
+        "source_columns": [
+          "Area-2023-24"
+        ],
+        "implementation_code": "df['rolling_avg_area'] = df.groupby('Crop')['Area-2023-24'].rolling(3).mean().reset_index(level=0, drop=True)"
+      }
+    ],
+    "target_column": "Production-2024-25",
+    "date_column": "Season",
+    "validation_strategy": "temporal",
+    "expected_model_types": [
+      "arima",
+      "prophet",
+      "random_forest"
+    ],
+    "evaluation_metrics": [
+      "mae",
+      "rmse",
+      "mape"
+    ]
+  }
+}

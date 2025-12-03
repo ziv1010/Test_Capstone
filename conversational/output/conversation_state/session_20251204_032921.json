@@ -1,0 +1,33 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-04T03:29:34.179362",
+    "checksum": "b8bbf6f82bf36160",
+    "version": "1.0"
+  },
+  "data": {
+    "session_id": "session_20251204_032921",
+    "messages": [
+      {
+        "role": "user",
+        "content": "can you run TSK-002",
+        "timestamp": "2025-12-04 03:29:22.652228",
+        "metadata": {}
+      },
+      {
+        "role": "user",
+        "content": "can you run TSK-002",
+        "timestamp": "2025-12-04 03:29:32.617225",
+        "metadata": {}
+      }
+    ],
+    "current_intent": null,
+    "pipeline_state": null,
+    "available_summaries": [],
+    "available_proposals": [],
+    "current_task_id": null,
+    "preferred_task_category": null,
+    "custom_query": null,
+    "created_at": "2025-12-04 03:29:21.607529",
+    "last_updated": "2025-12-04 03:29:32.617248"
+  }
+}

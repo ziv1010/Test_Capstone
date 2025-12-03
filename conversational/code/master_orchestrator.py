@@ -253,6 +253,12 @@ def run_pipeline_stages(
             continue
 
         logger.info(f"Running {stage}")
+        
+        # Log state if in debug mode
+        from code.config import DEBUG
+        if DEBUG:
+            logger.debug(f"State before {stage}: {state.model_dump_json(indent=2, exclude={'session_id'})}")
+            
         state = STAGE_NODES[stage](state)
 
         # Check for failure
@@ -300,37 +306,44 @@ class ConversationalOrchestrator:
         # Check if we need to run pipeline stages
         if result.get("action") == "run_pipeline" and result.get("task_id"):
             task_id = result["task_id"]
+           
+            # If task_id is None, it means validation failed
+            if task_id is None:
+                result["response"] += "\n\n❌ Task not found. Please check available tasks with 'show tasks' or create a custom task."
+                return result
+            
             self.current_task_id = task_id
 
             # Add pipeline execution info to response
             result["pipeline_started"] = True
-            result["response"] += f"\n\nStarting pipeline execution for {task_id}..."
+            result["response"] += f"\n\n🚀 Starting pipeline execution for {task_id}..."
+            result["response"] += "\n   Stages: 3 → 3B → 3.5A → 3.5B → 4 → 5"
 
             # Run the forecasting pipeline
             try:
                 self.pipeline_state = run_forecasting_pipeline(task_id)
                 result["pipeline_completed"] = True
-                result["response"] += "\n\nPipeline completed successfully!"
+                result["response"] += "\n\n✅ Pipeline completed successfully!"
 
                 # Add summary of results
                 if self.pipeline_state.stage5_output:
-                    result["response"] += f"\n\nVisualization report created with insights."
+                    result["response"] += f"\n\n📊 Visualization report created with insights."
                 elif self.pipeline_state.stage4_output:
                     metrics = self.pipeline_state.stage4_output.metrics or {}
-                    result["response"] += f"\n\nExecution completed. Metrics: {metrics}"
+                    result["response"] += f"\n\n📈 Execution completed. Metrics: {metrics}"
 
             except Exception as e:
                 result["pipeline_completed"] = False
-                result["response"] += f"\n\nPipeline failed: {e}"
+                result["response"] += f"\n\n❌ Pipeline failed: {e}"
                 logger.error(f"Pipeline execution failed: {e}")
 
         elif result.get("action") == "run_stages" and result.get("stages"):
             stages = result["stages"]
             try:
                 self.pipeline_state = run_pipeline_stages(stages)
-                result["response"] += f"\n\nCompleted stages: {stages}"
+                result["response"] += f"\n\n✅ Completed stages: {stages}"
             except Exception as e:
-                result["response"] += f"\n\nFailed to run stages: {e}"
+                result["response"] += f"\n\n❌ Failed to run stages: {e}"
 
         return result
 

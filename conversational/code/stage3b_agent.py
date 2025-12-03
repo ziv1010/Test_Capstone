@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from code.config import (
     STAGE3_OUT_DIR, STAGE3B_OUT_DIR, SECONDARY_LLM_CONFIG,
-    STAGE_MAX_ROUNDS, DataPassingManager, logger
+    STAGE_MAX_ROUNDS, DataPassingManager, logger, DEBUG, RECURSION_LIMIT
 )
 from code.models import PreparedDataOutput, PipelineState
 from tools.stage3b_tools import STAGE3B_TOOLS, reset_react_state
@@ -157,6 +157,11 @@ def create_stage3b_agent():
             }
 
         response = llm_with_tools.invoke(messages)
+        
+        if DEBUG:
+            logger.debug(f"Stage 3B Agent Response: {response.content}")
+            if response.tool_calls:
+                logger.debug(f"Tool Calls: {response.tool_calls}")
 
         return {
             "messages": [response],
@@ -222,7 +227,10 @@ Use record_observation() AFTER each action.
 The output should be saved as: prepared_{plan_id}.parquet
 """)
 
-    config = {"configurable": {"thread_id": f"stage3b_{plan_id}"}}
+    config = {
+        "configurable": {"thread_id": f"stage3b_{plan_id}"},
+        "recursion_limit": RECURSION_LIMIT
+    }
     initial_state = Stage3BState(messages=[initial_message], plan_id=plan_id)
 
     try:

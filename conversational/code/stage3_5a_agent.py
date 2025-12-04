@@ -211,12 +211,20 @@ Steps:
    - M3: Machine learning (e.g., random forest with lag features)
 5. Write COMPLETE implementation code for each
 6. Define data split strategy (prefer temporal split)
-7. Save the method proposal
+7. Save the method proposal using save_method_proposal tool
 
 Each method's code must:
 - Be a complete, runnable function
 - Accept train_df, test_df, target_col, date_col parameters
 - Return a DataFrame with 'predicted' column
+
+IMPORTANT: You MUST call save_method_proposal with a valid JSON object.
+The JSON must have these fields:
+- plan_id: "{plan_id}"
+- methods_proposed: list of 3 method objects
+- data_split_strategy: object with split info
+- date_column: column name (or null)
+- target_column: column name
 
 Save output as: method_proposal_{plan_id}.json
 """)
@@ -238,11 +246,139 @@ Save output as: method_proposal_{plan_id}.json
             logger.info(f"Stage 3.5A complete: {len(output.methods_proposed)} methods proposed")
             return output
         else:
-            raise RuntimeError("Method proposal was not saved")
+            # Fallback: create a default proposal if agent failed to save
+            logger.warning("Agent failed to save proposal, creating default methods")
+            default_proposal = _create_default_method_proposal(plan_id)
+            output_path = DataPassingManager.save_artifact(
+                data=default_proposal,
+                output_dir=STAGE3_5A_OUT_DIR,
+                filename=f"method_proposal_{plan_id}.json",
+                metadata={"stage": "stage3_5a", "type": "method_proposal", "fallback": True}
+            )
+            logger.info(f"Saved fallback proposal to {output_path}")
+            output = MethodProposalOutput(**default_proposal)
+            return output
 
     except Exception as e:
         logger.error(f"Stage 3.5A failed: {e}")
-        raise
+        # Try to create fallback proposal
+        try:
+            logger.warning("Creating fallback method proposal after exception")
+            default_proposal = _create_default_method_proposal(plan_id)
+            output_path = DataPassingManager.save_artifact(
+                data=default_proposal,
+                output_dir=STAGE3_5A_OUT_DIR,
+                filename=f"method_proposal_{plan_id}.json",
+                metadata={"stage": "stage3_5a", "type": "method_proposal", "fallback": True}
+            )
+            output = MethodProposalOutput(**default_proposal)
+            return output
+        except Exception as fallback_error:
+            logger.error(f"Fallback also failed: {fallback_error}")
+            raise
+
+
+def _create_default_method_proposal(plan_id: str) -> dict:
+    """Create a default method proposal as fallback."""
+    # Load plan to get target/date columns
+    try:
+        plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
+        plan = DataPassingManager.load_artifact(plan_path)
+        target_col = plan.get('target_column', 'target')
+        date_col = plan.get('date_column', None)
+    except:
+        target_col = 'target'
+        date_col = None
+
+    return {
+        "plan_id": plan_id,
+        "methods_proposed": [
+            {
+                "method_id": "M1",
+                "name": "Naive Forecast",
+                "category": "baseline",
+                "description": "Predicts the last observed value as the next value",
+                "implementation_code": """def predict_naive(train_df, test_df, target_col, date_col, **params):
+    import pandas as pd
+    import numpy as np
+    last_value = train_df[target_col].iloc[-1]
+    predictions = pd.DataFrame({
+        'predicted': [last_value] * len(test_df)
+    }, index=test_df.index)
+    return predictions""",
+                "required_libraries": ["pandas", "numpy"],
+                "hyperparameters": {},
+                "expected_strengths": ["Simple", "Fast", "No training needed"],
+                "expected_weaknesses": ["Cannot capture trends", "Ignores patterns"]
+            },
+            {
+                "method_id": "M2",
+                "name": "Moving Average",
+                "category": "statistical",
+                "description": "Uses rolling mean of recent observations",
+                "implementation_code": """def predict_moving_average(train_df, test_df, target_col, date_col, window=7, **params):
+    import pandas as pd
+    import numpy as np
+    last_values = train_df[target_col].tail(window)
+    prediction = last_values.mean()
+    predictions = pd.DataFrame({
+        'predicted': [prediction] * len(test_df)
+    }, index=test_df.index)
+    return predictions""",
+                "required_libraries": ["pandas", "numpy"],
+                "hyperparameters": {"window": 7},
+                "expected_strengths": ["Simple", "Robust to outliers"],
+                "expected_weaknesses": ["Cannot capture trends", "Lags behind changes"]
+            },
+            {
+                "method_id": "M3",
+                "name": "Linear Regression",
+                "category": "ml",
+                "description": "Linear regression with lag features",
+                "implementation_code": """def predict_linear(train_df, test_df, target_col, date_col, n_lags=3, **params):
+    import pandas as pd
+    import numpy as np
+    from sklearn.linear_model import LinearRegression
+
+    # Create lag features
+    df = train_df.copy()
+    for i in range(1, n_lags + 1):
+        df[f'lag_{i}'] = df[target_col].shift(i)
+    df = df.dropna()
+
+    feature_cols = [f'lag_{i}' for i in range(1, n_lags + 1)]
+    X_train = df[feature_cols]
+    y_train = df[target_col]
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    # Predict
+    predictions = []
+    last_values = list(train_df[target_col].tail(n_lags).values)
+
+    for _ in range(len(test_df)):
+        X_pred = pd.DataFrame([last_values[::-1]], columns=feature_cols)
+        pred = model.predict(X_pred)[0]
+        predictions.append(pred)
+        last_values = [pred] + last_values[:-1]
+
+    return pd.DataFrame({'predicted': predictions}, index=test_df.index)""",
+                "required_libraries": ["pandas", "numpy", "scikit-learn"],
+                "hyperparameters": {"n_lags": 3},
+                "expected_strengths": ["Captures linear trends", "Fast training"],
+                "expected_weaknesses": ["Cannot capture non-linear patterns"]
+            }
+        ],
+        "data_split_strategy": {
+            "strategy_type": "temporal",
+            "train_size": 0.7,
+            "validation_size": 0.15,
+            "test_size": 0.15
+        },
+        "date_column": date_col,
+        "target_column": target_col
+    }
 
 
 # ============================================================================

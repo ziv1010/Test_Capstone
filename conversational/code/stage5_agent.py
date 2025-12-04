@@ -205,7 +205,7 @@ Steps:
 3. Create standard plots (actual vs predicted, time series, residuals)
 4. Generate insights from the results
 5. Create any additional helpful visualizations
-6. Save the visualization report
+6. Save the visualization report using save_visualization_report tool
 
 Required plots:
 - Actual vs Predicted scatter plot
@@ -214,6 +214,11 @@ Required plots:
 - Residuals over time
 
 The results data is at: {STAGE4_OUT_DIR}/results_{plan_id}.parquet
+
+IMPORTANT: You MUST call save_visualization_report with a valid JSON containing:
+- plan_id: "{plan_id}"
+- visualizations: list of plot info
+- summary: overall assessment
 
 Save plots to: {STAGE5_OUT_DIR}/
 Save report as: visualization_report_{plan_id}.json
@@ -233,22 +238,128 @@ Save report as: visualization_report_{plan_id}.json
             logger.info(f"Stage 5 complete: {len(output.visualizations)} visualizations created")
             return output
         else:
-            # Create minimal report
-            plots = list(STAGE5_OUT_DIR.glob(f"{plan_id}_*.png"))
-            output = VisualizationReport(
-                plan_id=plan_id,
-                visualizations=[],
-                insights=[],
-                summary="Visualization completed"
-            )
+            # Fallback: create default visualizations
+            logger.warning("Agent failed to create visualizations, creating fallback")
+            output = _create_fallback_visualizations(plan_id)
             return output
 
     except Exception as e:
         logger.error(f"Stage 5 failed: {e}")
+        # Try fallback
+        try:
+            logger.warning("Creating fallback visualizations after exception")
+            output = _create_fallback_visualizations(plan_id)
+            return output
+        except Exception as fallback_error:
+            logger.error(f"Fallback also failed: {fallback_error}")
+            return VisualizationReport(
+                plan_id=plan_id,
+                visualizations=[],
+                summary=f"Visualization failed: {e}"
+            )
+
+
+def _create_fallback_visualizations(plan_id: str) -> VisualizationReport:
+    """Create fallback visualizations."""
+    import pandas as pd
+    import numpy as np
+
+    visualizations = []
+    insights = []
+
+    try:
+        # Load results
+        results_path = STAGE4_OUT_DIR / f"results_{plan_id}.parquet"
+        if not results_path.exists():
+            raise FileNotFoundError(f"Results not found: {results_path}")
+
+        df = pd.read_parquet(results_path)
+
+        # Find prediction and actual columns
+        pred_cols = [c for c in df.columns if 'predict' in c.lower()]
+        actual_cols = [c for c in df.columns if 'actual' in c.lower()]
+
+        # Try to create plots
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+
+        if pred_cols and actual_cols:
+            pred_col, actual_col = pred_cols[0], actual_cols[0]
+
+            # 1. Actual vs Predicted scatter
+            fig, ax = plt.subplots(figsize=(10, 8))
+            ax.scatter(df[actual_col], df[pred_col], alpha=0.5)
+            ax.plot([df[actual_col].min(), df[actual_col].max()],
+                   [df[actual_col].min(), df[actual_col].max()], 'r--', label='Perfect Prediction')
+            ax.set_xlabel('Actual')
+            ax.set_ylabel('Predicted')
+            ax.set_title('Actual vs Predicted')
+            ax.legend()
+            plt.tight_layout()
+            plot_path = STAGE5_OUT_DIR / f'{plan_id}_actual_vs_predicted.png'
+            plt.savefig(plot_path, dpi=150)
+            plt.close()
+            visualizations.append({
+                "filename": f"{plan_id}_actual_vs_predicted.png",
+                "plot_type": "scatter",
+                "description": "Actual vs Predicted scatter plot"
+            })
+
+            # 2. Residuals histogram
+            residuals = df[actual_col] - df[pred_col]
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.hist(residuals, bins=30, edgecolor='black', alpha=0.7)
+            ax.axvline(x=0, color='r', linestyle='--')
+            ax.set_xlabel('Residual')
+            ax.set_ylabel('Frequency')
+            ax.set_title('Residual Distribution')
+            plt.tight_layout()
+            plot_path = STAGE5_OUT_DIR / f'{plan_id}_residuals_histogram.png'
+            plt.savefig(plot_path, dpi=150)
+            plt.close()
+            visualizations.append({
+                "filename": f"{plan_id}_residuals_histogram.png",
+                "plot_type": "histogram",
+                "description": "Distribution of prediction errors"
+            })
+
+            # Generate basic insights
+            mae = np.mean(np.abs(residuals))
+            rmse = np.sqrt(np.mean(residuals ** 2))
+            bias = np.mean(residuals)
+
+            insights = [
+                f"Mean Absolute Error: {mae:.4f}",
+                f"Root Mean Squared Error: {rmse:.4f}",
+                f"Prediction Bias: {bias:.4f}",
+                "Model created visualizations showing actual vs predicted values and error distribution"
+            ]
+
+        # Create and save report
+        report = VisualizationReport(
+            plan_id=plan_id,
+            visualizations=visualizations,
+            insights=insights,
+            summary=f"Created {len(visualizations)} visualizations (fallback mode)"
+        )
+
+        DataPassingManager.save_artifact(
+            data=report.model_dump(),
+            output_dir=STAGE5_OUT_DIR,
+            filename=f"visualization_report_{plan_id}.json",
+            metadata={"stage": "stage5", "type": "visualization_report", "fallback": True}
+        )
+
+        logger.info(f"Fallback visualizations created: {len(visualizations)} plots")
+        return report
+
+    except Exception as e:
+        logger.error(f"Fallback visualization failed: {e}")
         return VisualizationReport(
             plan_id=plan_id,
             visualizations=[],
-            summary=f"Visualization failed: {e}"
+            summary=f"Fallback visualization failed: {e}"
         )
 
 

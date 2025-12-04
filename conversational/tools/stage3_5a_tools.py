@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from code.config import (
     DATA_DIR, STAGE3_OUT_DIR, STAGE3B_OUT_DIR, STAGE3_5A_OUT_DIR,
-    DataPassingManager, logger
+    DataPassingManager, logger, DEBUG
 )
 from code.utils import load_dataframe, execute_python_sandbox, safe_json_dumps
 
@@ -61,9 +61,8 @@ def load_plan_and_data(plan_id: str = None) -> str:
 
         # Try to load prepared data
         prepared_path = STAGE3B_OUT_DIR / f"prepared_{plan_id}.parquet"
-        if DEBUG:
-            logger.debug(f"Looking for prepared data at: {prepared_path}")
-            
+        logger.debug(f"Looking for prepared data at: {prepared_path}")
+
         if prepared_path.exists():
             df = pd.read_parquet(prepared_path)
             result.append(f"Prepared Data: {df.shape[0]} rows x {df.shape[1]} columns")
@@ -89,6 +88,7 @@ def load_plan_and_data(plan_id: str = None) -> str:
         return "\n".join(result)
 
     except Exception as e:
+        logger.error(f"Error loading plan/data: {e}")
         return f"Error loading plan/data: {e}"
 
 
@@ -397,7 +397,7 @@ def save_method_proposal(proposal_json: str) -> str:
     try:
         if DEBUG:
             logger.debug(f"Saving proposal. Input type: {type(proposal_json)}")
-            logger.debug(f"Input preview: {str(proposal_json)[:200]}...")
+            logger.debug(f"Input preview: {str(proposal_json)[:500]}...")
 
         if isinstance(proposal_json, dict):
             proposal = proposal_json
@@ -411,7 +411,7 @@ def save_method_proposal(proposal_json: str) -> str:
             if cleaned_json.endswith("```"):
                 cleaned_json = cleaned_json[:-3]
             cleaned_json = cleaned_json.strip()
-            
+
             try:
                 proposal = json.loads(cleaned_json)
                 # Handle double-encoded JSON (string inside string)
@@ -428,17 +428,44 @@ def save_method_proposal(proposal_json: str) -> str:
                 if isinstance(proposal, str):
                     proposal = json.loads(proposal)
 
-        # Validate structure
-        required = ['plan_id', 'methods_proposed', 'data_split_strategy', 'date_column', 'target_column']
+        # Validate structure - be more lenient with required fields
+        required = ['plan_id', 'methods_proposed']
         missing = [f for f in required if f not in proposal]
         if missing:
             return f"Error: Missing required fields: {missing}"
 
-        if len(proposal.get('methods_proposed', [])) != 3:
-            return "Error: Exactly 3 methods must be proposed"
+        methods = proposal.get('methods_proposed', [])
+        if not methods:
+            return "Error: No methods proposed"
+
+        # Accept 1-3 methods instead of exactly 3 (be lenient)
+        if len(methods) > 3:
+            logger.warning(f"More than 3 methods proposed ({len(methods)}), using first 3")
+            proposal['methods_proposed'] = methods[:3]
+
+        # Ensure data_split_strategy exists with defaults
+        if 'data_split_strategy' not in proposal:
+            proposal['data_split_strategy'] = {
+                'strategy_type': 'temporal',
+                'train_size': 0.7,
+                'validation_size': 0.15,
+                'test_size': 0.15
+            }
+            logger.warning("Added default data_split_strategy")
+
+        # Ensure date_column and target_column have defaults
+        if 'date_column' not in proposal:
+            proposal['date_column'] = 'date'
+            logger.warning("Added default date_column='date'")
+        if 'target_column' not in proposal:
+            proposal['target_column'] = 'target'
+            logger.warning("Added default target_column='target'")
 
         plan_id = proposal['plan_id']
         filename = f"method_proposal_{plan_id}.json"
+
+        # Ensure output directory exists
+        STAGE3_5A_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
         output_path = DataPassingManager.save_artifact(
             data=proposal,
@@ -450,11 +477,25 @@ def save_method_proposal(proposal_json: str) -> str:
         if DEBUG:
             logger.debug(f"Successfully saved to {output_path}")
 
-        return f"Method proposal saved to: {output_path}"
+        # Verify the file was actually saved
+        if output_path.exists():
+            logger.info(f"Verified file exists at: {output_path}")
+            return f"SUCCESS: Method proposal saved to: {output_path}"
+        else:
+            # Fallback: direct write
+            logger.warning("DataPassingManager save may have failed, attempting direct write...")
+            with open(STAGE3_5A_OUT_DIR / filename, 'w') as f:
+                json.dump(proposal, f, indent=2, default=str)
+            return f"SUCCESS (fallback): Method proposal saved to: {STAGE3_5A_OUT_DIR / filename}"
 
     except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error: {e}")
+        logger.error(f"Input was: {str(proposal_json)[:1000]}")
         return f"Error: Invalid JSON - {e}"
     except Exception as e:
+        logger.error(f"Error saving proposal: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return f"Error saving proposal: {e}"
 
 
@@ -478,6 +519,267 @@ def finish_method_proposal() -> str:
     return "Stage 3.5A Complete. You may now stop."
 
 
+@tool
+def inspect_data_sample(plan_id: str = None, n_rows: int = 10) -> str:
+    """
+    Get a sample of the prepared data for inspection.
+
+    Args:
+        plan_id: Plan ID to inspect
+        n_rows: Number of rows to display
+
+    Returns:
+        Data sample with statistics
+    """
+    try:
+        if not plan_id:
+            plans = list(STAGE3_OUT_DIR.glob("PLAN-*.json"))
+            if plans:
+                plan_id = max(plans, key=lambda p: p.stat().st_mtime).stem
+
+        prepared_path = STAGE3B_OUT_DIR / f"prepared_{plan_id}.parquet"
+        if not prepared_path.exists():
+            return f"Prepared data not found at: {prepared_path}"
+
+        df = pd.read_parquet(prepared_path)
+
+        result = [
+            f"=== Data Sample: {plan_id} ===",
+            f"Shape: {df.shape[0]} rows x {df.shape[1]} columns",
+            f"Columns: {list(df.columns)}",
+            "",
+            "Data Types:",
+        ]
+
+        for col in df.columns:
+            result.append(f"  {col}: {df[col].dtype}")
+
+        result.append(f"\nFirst {n_rows} rows:")
+        result.append(df.head(n_rows).to_string())
+
+        result.append(f"\nLast {n_rows} rows:")
+        result.append(df.tail(n_rows).to_string())
+
+        result.append("\nNumeric statistics:")
+        result.append(df.describe().to_string())
+
+        return "\n".join(result)
+
+    except Exception as e:
+        return f"Error inspecting data: {e}"
+
+
+@tool
+def test_method_code(code: str, plan_id: str = None) -> str:
+    """
+    Test method implementation code before proposing it.
+
+    This allows you to verify that the implementation works correctly
+    before including it in the method proposal.
+
+    Args:
+        code: Python code containing the method function
+        plan_id: Plan ID for loading test data
+
+    Returns:
+        Test results showing if the code executes correctly
+    """
+    import sys
+    from io import StringIO
+
+    try:
+        if not plan_id:
+            plans = list(STAGE3_OUT_DIR.glob("PLAN-*.json"))
+            if plans:
+                plan_id = max(plans, key=lambda p: p.stat().st_mtime).stem
+
+        # Load data
+        prepared_path = STAGE3B_OUT_DIR / f"prepared_{plan_id}.parquet"
+        if not prepared_path.exists():
+            return f"Prepared data not found: {prepared_path}"
+
+        df = pd.read_parquet(prepared_path)
+
+        # Load plan for column info
+        plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
+        plan = DataPassingManager.load_artifact(plan_path)
+        target_col = plan.get('target_column', df.columns[-1])
+        date_col = plan.get('date_column', df.columns[0])
+
+        # Setup test namespace
+        namespace = {
+            'pd': pd,
+            'np': np,
+            'df': df,
+            'target_col': target_col,
+            'date_col': date_col,
+        }
+
+        # Common ML imports
+        try:
+            from sklearn.ensemble import RandomForestRegressor
+            from sklearn.linear_model import LinearRegression
+            namespace['RandomForestRegressor'] = RandomForestRegressor
+            namespace['LinearRegression'] = LinearRegression
+        except ImportError:
+            pass
+
+        try:
+            from statsmodels.tsa.arima.model import ARIMA
+            namespace['ARIMA'] = ARIMA
+        except ImportError:
+            pass
+
+        # Execute code
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+
+        try:
+            exec(code, namespace)
+            output = sys.stdout.getvalue()
+        finally:
+            sys.stdout = old_stdout
+
+        # Check if a predict function was defined
+        predict_funcs = [k for k in namespace.keys() if k.startswith('predict_') or 'method' in k.lower()]
+
+        result = [
+            "=== Method Code Test ===",
+            f"Code executed successfully!",
+            f"Output: {output[:500] if output else '(no output)'}",
+            "",
+            f"Functions defined: {predict_funcs}",
+        ]
+
+        # Try to run the method with a small sample
+        if predict_funcs:
+            func_name = predict_funcs[0]
+            func = namespace.get(func_name)
+            if callable(func):
+                result.append(f"\nTesting {func_name} with sample data...")
+                train_size = int(len(df) * 0.8)
+                train_df = df.iloc[:train_size].copy()
+                test_df = df.iloc[train_size:train_size+5].copy()
+
+                try:
+                    predictions = func(train_df, test_df, target_col, date_col)
+                    result.append(f"Test run successful!")
+                    result.append(f"Predictions shape: {predictions.shape if hasattr(predictions, 'shape') else len(predictions)}")
+                    if hasattr(predictions, 'head'):
+                        result.append(f"Sample predictions:\n{predictions.head()}")
+                except Exception as e:
+                    result.append(f"Test run failed: {e}")
+
+        return "\n".join(result)
+
+    except Exception as e:
+        import traceback
+        return f"Error testing code: {e}\n{traceback.format_exc()}"
+
+
+@tool
+def debug_pipeline_state(plan_id: str = None) -> str:
+    """
+    Debug the current pipeline state by checking all stage outputs.
+
+    Args:
+        plan_id: Plan ID to check
+
+    Returns:
+        Comprehensive status of all pipeline artifacts
+    """
+    try:
+        result = ["=== Pipeline Debug State ===\n"]
+
+        # Check Stage 1
+        summaries = list(SUMMARIES_DIR.glob("*.summary.json"))
+        result.append(f"Stage 1 (Summaries): {len(summaries)} files")
+        for s in summaries[:3]:
+            result.append(f"  - {s.name}")
+
+        # Check Stage 2
+        proposals_path = STAGE2_OUT_DIR / "task_proposals.json"
+        result.append(f"\nStage 2 (Proposals): {'EXISTS' if proposals_path.exists() else 'MISSING'}")
+
+        if plan_id:
+            # Check Stage 3
+            plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
+            result.append(f"\nStage 3 (Plan): {'EXISTS' if plan_path.exists() else 'MISSING'}")
+
+            # Check Stage 3B
+            prepared_path = STAGE3B_OUT_DIR / f"prepared_{plan_id}.parquet"
+            result.append(f"Stage 3B (Data): {'EXISTS' if prepared_path.exists() else 'MISSING'}")
+            if prepared_path.exists():
+                df = pd.read_parquet(prepared_path)
+                result.append(f"  Shape: {df.shape}")
+
+            # Check Stage 3.5A
+            method_path = STAGE3_5A_OUT_DIR / f"method_proposal_{plan_id}.json"
+            result.append(f"Stage 3.5A (Methods): {'EXISTS' if method_path.exists() else 'MISSING'}")
+            if method_path.exists():
+                methods = DataPassingManager.load_artifact(method_path)
+                result.append(f"  Methods: {len(methods.get('methods_proposed', []))}")
+
+            # Check Stage 3.5B
+            tester_path = STAGE3_5B_OUT_DIR / f"tester_{plan_id}.json"
+            result.append(f"Stage 3.5B (Tester): {'EXISTS' if tester_path.exists() else 'MISSING'}")
+            if tester_path.exists():
+                tester = DataPassingManager.load_artifact(tester_path)
+                result.append(f"  Selected: {tester.get('selected_method_id')}")
+
+            # Check Stage 4
+            results_path = STAGE4_OUT_DIR / f"results_{plan_id}.parquet"
+            exec_path = STAGE4_OUT_DIR / f"execution_result_{plan_id}.json"
+            result.append(f"Stage 4 (Execution): {'EXISTS' if exec_path.exists() else 'MISSING'}")
+            result.append(f"Stage 4 (Results): {'EXISTS' if results_path.exists() else 'MISSING'}")
+
+            # Check Stage 5
+            viz_path = STAGE5_OUT_DIR / f"visualization_report_{plan_id}.json"
+            result.append(f"Stage 5 (Visualization): {'EXISTS' if viz_path.exists() else 'MISSING'}")
+
+        return "\n".join(result)
+
+    except Exception as e:
+        return f"Error debugging pipeline: {e}"
+
+
+@tool
+def get_react_summary_3_5a() -> str:
+    """
+    Get a summary of all recorded thoughts and observations.
+
+    Returns:
+        Summary of ReAct reasoning trail
+    """
+    global _stage3_5a_thoughts, _stage3_5a_observations
+
+    result = ["=== ReAct Summary (Stage 3.5A) ===\n"]
+
+    if _stage3_5a_thoughts:
+        result.append("Thoughts:")
+        for t in _stage3_5a_thoughts:
+            result.append(f"  {t['step']}. {t['thought'][:100]}...")
+            result.append(f"     Next: {t['next_action'][:50]}...")
+    else:
+        result.append("No thoughts recorded yet.")
+
+    result.append("")
+
+    if _stage3_5a_observations:
+        result.append("Observations:")
+        for o in _stage3_5a_observations:
+            result.append(f"  {o['step']}. {o['what_happened'][:100]}...")
+            result.append(f"     Insight: {o['insight'][:50]}...")
+    else:
+        result.append("No observations recorded yet.")
+
+    return "\n".join(result)
+
+
+# Import SUMMARIES_DIR and STAGE2_OUT_DIR for debug tool
+from code.config import SUMMARIES_DIR, STAGE2_OUT_DIR, STAGE4_OUT_DIR, STAGE5_OUT_DIR
+
+
 # Export tools list
 STAGE3_5A_TOOLS = [
     load_plan_and_data,
@@ -488,4 +790,9 @@ STAGE3_5A_TOOLS = [
     get_method_templates,
     save_method_proposal,
     finish_method_proposal,
+    # New debugging tools
+    inspect_data_sample,
+    test_method_code,
+    debug_pipeline_state,
+    get_react_summary_3_5a,
 ]

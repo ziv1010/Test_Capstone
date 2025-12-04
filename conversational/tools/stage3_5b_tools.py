@@ -880,9 +880,79 @@ def debug_benchmark_state(plan_id: str) -> str:
         return f"Error debugging benchmark: {e}"
 
 
+@tool
+def get_actual_columns(plan_id: str = None) -> str:
+    """
+    Get the ACTUAL column names from the prepared data.
+    
+    CRITICAL: Use this to prevent column hallucination. Only use columns
+    that are returned by this tool - do not assume or invent column names.
+    
+    Args:
+        plan_id: Plan ID to check
+    
+    Returns:
+        List of actual columns with their data types
+    """
+    try:
+        if not plan_id:
+            plans = list(STAGE3_OUT_DIR.glob("PLAN-*.json"))
+            if plans:
+                plan_id = max(plans, key=lambda p: p.stat().st_mtime).stem
+        
+        # Load prepared data
+        prepared_path = STAGE3B_OUT_DIR / f"prepared_{plan_id}.parquet"
+        if not prepared_path.exists():
+            return f"ERROR: Prepared data not found at {prepared_path}"
+        
+        df = pd.read_parquet(prepared_path)
+        
+        # Load plan to show what was expected vs actual
+        plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
+        plan = DataPassingManager.load_artifact(plan_path) if plan_path.exists() else {}
+        
+        result = [
+            f"=== ACTUAL COLUMNS in prepared_{plan_id}.parquet ===",
+            f"Total columns: {len(df.columns)}",
+            f"Data shape: {df.shape}",
+            "",
+            "Column Name | Data Type",
+            "-" * 40,
+        ]
+        
+        for col in df.columns:
+            result.append(f"{col} | {df[col].dtype}")
+        
+        result.append("")
+        result.append("=== Plan Expectations vs Reality ===")
+        
+        expected_date = plan.get('date_column')
+        expected_target = plan.get('target_column')
+        
+        if expected_date:
+            status = "✓ EXISTS" if expected_date in df.columns else "✗ MISSING"
+            result.append(f"Expected date_column: {expected_date} ... {status}")
+            if expected_date not in df.columns:
+                result.append(f"  WARNING: Use df.index or set date_col=None in your benchmark code!")
+        
+        if expected_target:
+            status = "✓ EXISTS" if expected_target in df.columns else "✗ MISSING"
+            result.append(f"Expected target_column: {expected_target} ... {status}")
+        
+        result.append("")
+        result.append("⚠️  CRITICAL: Use ONLY the columns listed above!")
+        result.append("⚠️  Do NOT assume or invent column names like 'Year', 'date', etc.")
+        
+        return "\n".join(result)
+        
+    except Exception as e:
+        return f"Error getting actual columns: {e}"
+
+
 # Export tools list
 STAGE3_5B_TOOLS = [
     load_method_proposals,
+    get_actual_columns,  # NEW: Prevent column hallucination
     load_checkpoint,
     save_checkpoint,
     record_thought_3_5b,

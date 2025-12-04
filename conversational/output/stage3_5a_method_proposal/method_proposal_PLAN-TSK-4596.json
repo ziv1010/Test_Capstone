@@ -1,0 +1,91 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-04T15:32:42.957868",
+    "checksum": "fdd0b15c828d90ac",
+    "version": "1.0",
+    "stage": "stage3_5a",
+    "type": "method_proposal"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-4596",
+    "methods_proposed": [
+      {
+        "method_id": "M1",
+        "name": "Naive Forecast",
+        "category": "baseline",
+        "description": "Uses last observed value as prediction",
+        "implementation_code": "def predict_naive(train_df, test_df, target_col, date_col):\n    import pandas as pd\n    import numpy as np\n\n    # Get last value from training data\n    last_value = train_df[target_col].iloc[-1]\n\n    # Create predictions DataFrame\n    predictions = pd.DataFrame({\n        'predicted': [last_value] * len(test_df)\n    }, index=test_df.index)\n\n    return predictions",
+        "required_libraries": [
+          "pandas",
+          "numpy"
+        ],
+        "hyperparameters": {},
+        "expected_strengths": [
+          "Simple",
+          "Fast"
+        ],
+        "expected_weaknesses": [
+          "No trend/seasonality handling"
+        ]
+      },
+      {
+        "method_id": "M2",
+        "name": "ARIMA",
+        "category": "statistical",
+        "description": "Auto-regressive integrated moving average",
+        "implementation_code": "def predict_arima(train_df, test_df, target_col, date_col):\n    import pandas as pd\n    import numpy as np\n    from statsmodels.tsa.arima.model import ARIMA\n\n    # Prepare training data\n    y_train = train_df[target_col].values\n\n    # Fit ARIMA model\n    model = ARIMA(y_train, order=(1,1,1))\n    fitted = model.fit()\n\n    # Forecast\n    n_forecast = len(test_df)\n    forecast = fitted.forecast(steps=n_forecast)\n\n    # Create predictions DataFrame\n    predictions = pd.DataFrame({\n        'predicted': forecast\n    }, index=test_df.index)\n\n    return predictions",
+        "required_libraries": [
+          "pandas",
+          "numpy",
+          "statsmodels"
+        ],
+        "hyperparameters": {
+          "order": [
+            1,
+            1,
+            1
+          ]
+        },
+        "expected_strengths": [
+          "Captures trends",
+          "Well-understood theory"
+        ],
+        "expected_weaknesses": [
+          "Assumes linear relationships"
+        ]
+      },
+      {
+        "method_id": "M3",
+        "name": "Random Forest with Lags",
+        "category": "ml",
+        "description": "Random forest using lag features and rolling means",
+        "implementation_code": "def predict_random_forest(train_df, test_df, target_col, date_col):\n    import pandas as pd\n    import numpy as np\n    from sklearn.ensemble import RandomForestRegressor\n\n    # Use existing lag and rolling features\n    feature_cols = ['production_lag_1', 'area_rolling_mean']\n\n    X_train = train_df[feature_cols]\n    y_train = train_df[target_col]\n\n    # Train model\n    model = RandomForestRegressor(n_estimators=100, random_state=42)\n    model.fit(X_train, y_train)\n\n    # Predict using last known values\n    last_values = train_df[feature_cols].iloc[-1].values\n    predictions = model.predict([last_values]) * len(test_df)\n\n    return pd.DataFrame({'predicted': predictions}, index=test_df.index)",
+        "required_libraries": [
+          "pandas",
+          "numpy",
+          "scikit-learn"
+        ],
+        "hyperparameters": {
+          "n_estimators": 100
+        },
+        "expected_strengths": [
+          "Handles non-linear patterns",
+          "Uses engineered features"
+        ],
+        "expected_weaknesses": [
+          "May overfit"
+        ]
+      }
+    ],
+    "data_split_strategy": {
+      "strategy_type": "temporal",
+      "date_column": "Year",
+      "target_column": "Production-2024-25",
+      "train_period": "First 80% of data",
+      "validation_period": "Next 10% of data",
+      "test_period": "Last 10% of data"
+    },
+    "date_column": "Year",
+    "target_column": "Production-2024-25"
+  }
+}

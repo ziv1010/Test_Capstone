@@ -307,13 +307,36 @@ def save_stage3_plan(plan_json: str) -> str:
         Confirmation with saved path
     """
     try:
+        from code.models import Stage3Plan
+        from pydantic import ValidationError
+        
         plan = json.loads(plan_json)
 
-        # Validate required fields
+        # Validate required fields first
         required = ['plan_id', 'selected_task_id', 'goal', 'task_category', 'target_column']
         missing = [f for f in required if f not in plan]
         if missing:
             return f"Error: Missing required fields: {missing}"
+
+        # Validate against Pydantic schema BEFORE saving
+        try:
+            validated_plan = Stage3Plan(**plan)
+            # Convert back to dict for saving
+            plan = validated_plan.model_dump(mode='json')
+        except ValidationError as e:
+            # Provide helpful error message to agent
+            error_details = []
+            for error in e.errors():
+                field = '.'.join(str(x) for x in error['loc'])
+                msg = error['msg']
+                error_details.append(f"  - {field}: {msg}")
+            
+            return (
+                "❌ Validation Error: Plan does not match the required schema.\n\n"
+                "Errors found:\n" + '\n'.join(error_details) + 
+                "\n\nPlease fix these issues and try again. "
+                "Use get_execution_plan_template() to see the correct format."
+            )
 
         plan_id = plan['plan_id']
         filename = f"{plan_id}.json"
@@ -325,7 +348,7 @@ def save_stage3_plan(plan_json: str) -> str:
             metadata={"stage": "stage3", "type": "execution_plan"}
         )
 
-        return f"Execution plan saved to: {output_path}"
+        return f"✅ Execution plan saved successfully to: {output_path}"
 
     except json.JSONDecodeError as e:
         return f"Error: Invalid JSON - {e}"

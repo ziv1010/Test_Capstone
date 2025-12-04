@@ -354,12 +354,18 @@ class BenchmarkMetrics(BaseModel):
 class MethodBenchmarkResult(BaseModel):
     """Benchmark results for a single method."""
     method_id: str
-    method_name: str
+    method_name: Optional[str] = None  # Make optional to support simplified format
     iterations: List[BenchmarkMetrics] = Field(default_factory=list)
     average_metrics: Optional[BenchmarkMetrics] = None
     coefficient_of_variation: Optional[float] = None
     is_valid: bool = True
     failure_reason: Optional[str] = None
+    
+    # Allow direct metrics for simplified format
+    mae: Optional[float] = None
+    rmse: Optional[float] = None
+    mape: Optional[float] = None
+    status: Optional[str] = None
 
 
 class TesterOutput(BaseModel):
@@ -369,7 +375,7 @@ class TesterOutput(BaseModel):
     selected_method_id: str
     selected_method_name: str
     selection_rationale: str
-    method_comparison_summary: str
+    method_comparison_summary: Optional[str] = None  # Make optional
     detailed_procedure: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
 

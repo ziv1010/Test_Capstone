@@ -49,6 +49,11 @@ class Stage35AState(BaseModel):
 
 STAGE35A_SYSTEM_PROMPT = """You are a Method Proposal Agent responsible for proposing forecasting methods.
 
+## CRITICAL: Prevent Column Hallucination
+❌ DO NOT assume column names exist (e.g., 'Year', 'date', 'time')
+✅ ALWAYS call get_actual_columns() FIRST to see real columns
+✅ Use ONLY columns that actually exist in the prepared data
+
 ## Your Role
 Analyze the data and task, then propose EXACTLY 3 forecasting methods:
 1. A simple BASELINE method (moving average, naive, etc.)
@@ -56,13 +61,15 @@ Analyze the data and task, then propose EXACTLY 3 forecasting methods:
 3. A MACHINE LEARNING method (random forest, gradient boosting, etc.)
 
 ## Your Goals
-1. Understand the data structure and time series characteristics
-2. Analyze temporal patterns (trend, seasonality, frequency)
-3. Propose 3 diverse, appropriate methods
-4. Write complete, executable implementation code
-5. Define data split strategy
+1. **FIRST**: Call get_actual_columns() to see what columns exist
+2. Understand the data structure and time series characteristics
+3. Analyze temporal patterns (trend, seasonality, frequency)
+4. Propose 3 diverse, appropriate methods
+5. Write complete, executable implementation code using ONLY existing columns
+6. Define data split strategy
 
 ## Available Tools
+- get_actual_columns: **CALL THIS FIRST** to prevent column hallucination
 - load_plan_and_data: Load execution plan and prepared data info
 - analyze_time_series: Analyze time series characteristics
 - record_thought_3_5a: Document reasoning (ReAct)
@@ -78,7 +85,7 @@ Each method MUST include:
 - name: Clear method name
 - category: "baseline", "statistical", or "ml"
 - description: What the method does
-- implementation_code: COMPLETE, EXECUTABLE Python function
+- implementation_code: COMPLETE, EXECUTABLE Python function using ONLY existing columns
 - required_libraries: List of imports needed
 - hyperparameters: Key parameters and their values
 - expected_strengths: What this method does well
@@ -246,139 +253,30 @@ Save output as: method_proposal_{plan_id}.json
             logger.info(f"Stage 3.5A complete: {len(output.methods_proposed)} methods proposed")
             return output
         else:
-            # Fallback: create a default proposal if agent failed to save
-            logger.warning("Agent failed to save proposal, creating default methods")
-            default_proposal = _create_default_method_proposal(plan_id)
-            output_path = DataPassingManager.save_artifact(
-                data=default_proposal,
-                output_dir=STAGE3_5A_OUT_DIR,
-                filename=f"method_proposal_{plan_id}.json",
-                metadata={"stage": "stage3_5a", "type": "method_proposal", "fallback": True}
+            # NO FALLBACK - raise an error so the pipeline can retry
+            logger.error("Agent failed to save method proposal. Stage must be retried.")
+            raise RuntimeError(
+                "Stage 3.5A failed: Agent did not save method proposal. "
+                "This may be due to max_tokens error or other agent failure. "
+                "The stage should be retried."
             )
-            logger.info(f"Saved fallback proposal to {output_path}")
-            output = MethodProposalOutput(**default_proposal)
-            return output
 
     except Exception as e:
-        logger.error(f"Stage 3.5A failed: {e}")
-        # Try to create fallback proposal
-        try:
-            logger.warning("Creating fallback method proposal after exception")
-            default_proposal = _create_default_method_proposal(plan_id)
-            output_path = DataPassingManager.save_artifact(
-                data=default_proposal,
-                output_dir=STAGE3_5A_OUT_DIR,
-                filename=f"method_proposal_{plan_id}.json",
-                metadata={"stage": "stage3_5a", "type": "method_proposal", "fallback": True}
+        # Check if it's a max_tokens error
+        error_msg = str(e).lower()
+        if 'max_tokens' in error_msg or 'token' in error_msg:
+            logger.error(f"Stage 3.5A failed with token error: {e}")
+            raise RuntimeError(
+                f"Stage 3.5A failed due to max_tokens error: {e}. "
+                "This stage needs to be retried."
             )
-            output = MethodProposalOutput(**default_proposal)
-            return output
-        except Exception as fallback_error:
-            logger.error(f"Fallback also failed: {fallback_error}")
+        else:
+            logger.error(f"Stage 3.5A failed: {e}")
             raise
 
 
-def _create_default_method_proposal(plan_id: str) -> dict:
-    """Create a default method proposal as fallback."""
-    # Load plan to get target/date columns
-    try:
-        plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
-        plan = DataPassingManager.load_artifact(plan_path)
-        target_col = plan.get('target_column', 'target')
-        date_col = plan.get('date_column', None)
-    except:
-        target_col = 'target'
-        date_col = None
-
-    return {
-        "plan_id": plan_id,
-        "methods_proposed": [
-            {
-                "method_id": "M1",
-                "name": "Naive Forecast",
-                "category": "baseline",
-                "description": "Predicts the last observed value as the next value",
-                "implementation_code": """def predict_naive(train_df, test_df, target_col, date_col, **params):
-    import pandas as pd
-    import numpy as np
-    last_value = train_df[target_col].iloc[-1]
-    predictions = pd.DataFrame({
-        'predicted': [last_value] * len(test_df)
-    }, index=test_df.index)
-    return predictions""",
-                "required_libraries": ["pandas", "numpy"],
-                "hyperparameters": {},
-                "expected_strengths": ["Simple", "Fast", "No training needed"],
-                "expected_weaknesses": ["Cannot capture trends", "Ignores patterns"]
-            },
-            {
-                "method_id": "M2",
-                "name": "Moving Average",
-                "category": "statistical",
-                "description": "Uses rolling mean of recent observations",
-                "implementation_code": """def predict_moving_average(train_df, test_df, target_col, date_col, window=7, **params):
-    import pandas as pd
-    import numpy as np
-    last_values = train_df[target_col].tail(window)
-    prediction = last_values.mean()
-    predictions = pd.DataFrame({
-        'predicted': [prediction] * len(test_df)
-    }, index=test_df.index)
-    return predictions""",
-                "required_libraries": ["pandas", "numpy"],
-                "hyperparameters": {"window": 7},
-                "expected_strengths": ["Simple", "Robust to outliers"],
-                "expected_weaknesses": ["Cannot capture trends", "Lags behind changes"]
-            },
-            {
-                "method_id": "M3",
-                "name": "Linear Regression",
-                "category": "ml",
-                "description": "Linear regression with lag features",
-                "implementation_code": """def predict_linear(train_df, test_df, target_col, date_col, n_lags=3, **params):
-    import pandas as pd
-    import numpy as np
-    from sklearn.linear_model import LinearRegression
-
-    # Create lag features
-    df = train_df.copy()
-    for i in range(1, n_lags + 1):
-        df[f'lag_{i}'] = df[target_col].shift(i)
-    df = df.dropna()
-
-    feature_cols = [f'lag_{i}' for i in range(1, n_lags + 1)]
-    X_train = df[feature_cols]
-    y_train = df[target_col]
-
-    model = LinearRegression()
-    model.fit(X_train, y_train)
-
-    # Predict
-    predictions = []
-    last_values = list(train_df[target_col].tail(n_lags).values)
-
-    for _ in range(len(test_df)):
-        X_pred = pd.DataFrame([last_values[::-1]], columns=feature_cols)
-        pred = model.predict(X_pred)[0]
-        predictions.append(pred)
-        last_values = [pred] + last_values[:-1]
-
-    return pd.DataFrame({'predicted': predictions}, index=test_df.index)""",
-                "required_libraries": ["pandas", "numpy", "scikit-learn"],
-                "hyperparameters": {"n_lags": 3},
-                "expected_strengths": ["Captures linear trends", "Fast training"],
-                "expected_weaknesses": ["Cannot capture non-linear patterns"]
-            }
-        ],
-        "data_split_strategy": {
-            "strategy_type": "temporal",
-            "train_size": 0.7,
-            "validation_size": 0.15,
-            "test_size": 0.15
-        },
-        "date_column": date_col,
-        "target_column": target_col
-    }
+# Removed _create_default_method_proposal function
+# No more fallback logic - stages must complete successfully or fail properly
 
 
 # ============================================================================
@@ -388,7 +286,10 @@ def _create_default_method_proposal(plan_id: str) -> dict:
 def stage3_5a_node(state: PipelineState) -> PipelineState:
     """
     Stage 3.5A node for the master pipeline graph.
+    Includes automatic retry logic for transient failures.
     """
+    from code.config import MAX_RETRIES, RETRY_STAGES
+    
     state.mark_stage_started("stage3_5a")
 
     plan_id = f"PLAN-{state.selected_task_id}" if state.selected_task_id else None
@@ -396,13 +297,52 @@ def stage3_5a_node(state: PipelineState) -> PipelineState:
         state.mark_stage_failed("stage3_5a", "No plan ID available")
         return state
 
-    try:
-        output = run_stage3_5a(plan_id, state)
-        state.stage3_5a_output = output
-        state.mark_stage_completed("stage3_5a", output)
-    except Exception as e:
-        state.mark_stage_failed("stage3_5a", str(e))
-
+    # Retry logic for resilient execution
+    max_retries = MAX_RETRIES if "stage3_5a" in RETRY_STAGES else 1
+    last_error = None
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"Stage 3.5A attempt {attempt}/{max_retries}")
+            output = run_stage3_5a(plan_id, state)
+            state.stage3_5a_output = output
+            state.mark_stage_completed("stage3_5a", output)
+            logger.info(f"✅ Stage 3.5A succeeded on attempt {attempt}")
+            return state
+        except Exception as e:
+            last_error = e
+            error_msg = str(e).lower()
+            
+            # Check if it's a retryable error
+            is_retryable = (
+                'max_tokens' in error_msg or 
+                'token' in error_msg or
+                'did not save' in error_msg
+            )
+            
+            if is_retryable and attempt < max_retries:
+                logger.warning(
+                    f"⚠️  Stage 3.5A attempt {attempt} failed with retryable error: {e}. "
+                    f"Retrying... ({attempt}/{max_retries})"
+                )
+                # Clean up any partial outputs before retry
+                proposal_path = STAGE3_5A_OUT_DIR / f"method_proposal_{plan_id}.json"
+                if proposal_path.exists():
+                    logger.info(f"Removing partial output: {proposal_path}")
+                    proposal_path.unlink()
+                continue
+            else:
+                # Non-retryable error or max retries reached
+                if attempt >= max_retries:
+                    logger.error(
+                        f"❌ Stage 3.5A failed after {max_retries} attempts. "
+                        f"Last error: {e}"
+                    )
+                state.mark_stage_failed("stage3_5a", str(last_error))
+                return state
+    
+    # Should not reach here, but handle it
+    state.mark_stage_failed("stage3_5a", str(last_error))
     return state
 
 

@@ -453,13 +453,54 @@ def save_method_proposal(proposal_json: str) -> str:
             }
             logger.warning("Added default data_split_strategy")
 
-        # Ensure date_column and target_column have defaults
-        if 'date_column' not in proposal:
-            proposal['date_column'] = 'date'
-            logger.warning("Added default date_column='date'")
-        if 'target_column' not in proposal:
-            proposal['target_column'] = 'target'
-            logger.warning("Added default target_column='target'")
+        # Ensure date_column and target_column are consistent with data_split_strategy
+        # Priority: data_split_strategy > top-level > load from plan
+        split_strategy = proposal.get('data_split_strategy', {})
+
+        # Get values from split strategy first
+        split_target = split_strategy.get('target_column')
+        split_date = split_strategy.get('date_column')
+
+        # If not in proposal but in split_strategy, copy up
+        if 'date_column' not in proposal or proposal.get('date_column') == 'date':
+            if split_date:
+                proposal['date_column'] = split_date
+            else:
+                # Try to load from plan
+                try:
+                    plan_id = proposal['plan_id']
+                    plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
+                    if plan_path.exists():
+                        plan = DataPassingManager.load_artifact(plan_path)
+                        proposal['date_column'] = plan.get('date_column')
+                        logger.info(f"Loaded date_column from plan: {proposal['date_column']}")
+                except Exception:
+                    proposal['date_column'] = None
+                    logger.warning("date_column set to None (not found in plan)")
+
+        if 'target_column' not in proposal or proposal.get('target_column') == 'target':
+            if split_target:
+                proposal['target_column'] = split_target
+                logger.info(f"Using target_column from data_split_strategy: {split_target}")
+            else:
+                # Try to load from plan
+                try:
+                    plan_id = proposal['plan_id']
+                    plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
+                    if plan_path.exists():
+                        plan = DataPassingManager.load_artifact(plan_path)
+                        proposal['target_column'] = plan.get('target_column')
+                        logger.info(f"Loaded target_column from plan: {proposal['target_column']}")
+                except Exception:
+                    proposal['target_column'] = None
+                    logger.warning("target_column set to None (not found in plan)")
+
+        # Also ensure data_split_strategy has consistent values
+        if 'data_split_strategy' in proposal:
+            if proposal.get('target_column') and not proposal['data_split_strategy'].get('target_column'):
+                proposal['data_split_strategy']['target_column'] = proposal['target_column']
+            if proposal.get('date_column') and not proposal['data_split_strategy'].get('date_column'):
+                proposal['data_split_strategy']['date_column'] = proposal['date_column']
 
         plan_id = proposal['plan_id']
         filename = f"method_proposal_{plan_id}.json"
@@ -776,6 +817,75 @@ def get_react_summary_3_5a() -> str:
     return "\n".join(result)
 
 
+@tool
+def get_actual_columns(plan_id: str = None) -> str:
+    """
+    Get the ACTUAL column names from the prepared data.
+    
+    CRITICAL: Use this to prevent column hallucination. Only use columns
+    that are returned by this tool - do not assume or invent column names.
+    
+    Args:
+        plan_id: Plan ID to check
+    
+    Returns:
+        List of actual columns with their data types
+    """
+    try:
+        if not plan_id:
+            plans = list(STAGE3_OUT_DIR.glob("PLAN-*.json"))
+            if plans:
+                plan_id = max(plans, key=lambda p: p.stat().st_mtime).stem
+        
+        # Load prepared data
+        prepared_path = STAGE3B_OUT_DIR / f"prepared_{plan_id}.parquet"
+        if not prepared_path.exists():
+            return f"ERROR: Prepared data not found at {prepared_path}"
+        
+        df = pd.read_parquet(prepared_path)
+        
+        # Load plan to show what was expected vs actual
+        plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
+        plan = DataPassingManager.load_artifact(plan_path) if plan_path.exists() else {}
+        
+        result = [
+            f"=== ACTUAL COLUMNS in prepared_{plan_id}.parquet ===",
+            f"Total columns: {len(df.columns)}",
+            f"Data shape: {df.shape}",
+            "",
+            "Column Name | Data Type",
+            "-" * 40,
+        ]
+        
+        for col in df.columns:
+            result.append(f"{col} | {df[col].dtype}")
+        
+        result.append("")
+        result.append("=== Plan Expectations vs Reality ===")
+        
+        expected_date = plan.get('date_column')
+        expected_target = plan.get('target_column')
+        
+        if expected_date:
+            status = "✓ EXISTS" if expected_date in df.columns else "✗ MISSING"
+            result.append(f"Expected date_column: {expected_date} ... {status}")
+            if expected_date not in df.columns:
+                result.append(f"  WARNING: Use df.index or set date_col=None in your code!")
+        
+        if expected_target:
+            status = "✓ EXISTS" if expected_target in df.columns else "✗ MISSING"
+            result.append(f"Expected target_column: {expected_target} ... {status}")
+        
+        result.append("")
+        result.append("⚠️  CRITICAL: Use ONLY the columns listed above!")
+        result.append("⚠️  Do NOT assume or invent column names like 'Year', 'date', etc.")
+        
+        return "\n".join(result)
+        
+    except Exception as e:
+        return f"Error getting actual columns: {e}"
+
+
 # Import SUMMARIES_DIR and STAGE2_OUT_DIR for debug tool
 from code.config import SUMMARIES_DIR, STAGE2_OUT_DIR, STAGE4_OUT_DIR, STAGE5_OUT_DIR
 
@@ -783,6 +893,7 @@ from code.config import SUMMARIES_DIR, STAGE2_OUT_DIR, STAGE4_OUT_DIR, STAGE5_OU
 # Export tools list
 STAGE3_5A_TOOLS = [
     load_plan_and_data,
+    get_actual_columns,  # NEW: Prevent column hallucination
     analyze_time_series,
     record_thought_3_5a,
     record_observation_3_5a,

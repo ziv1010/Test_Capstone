@@ -1,31 +1,38 @@
+"""
+Fix the Stage 3 Plan JSON to match the expected schema.
 
-import sys
+This script fixes two issues:
+1. Converts filters from string to list
+2. Converts validation_strategy from dict to string
+"""
+
+import json
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent))
 
-from code.config import STAGE3_OUT_DIR, DataPassingManager
+plan_path = Path("/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage3_out/PLAN-TSK-4106.json")
 
-plan_path = STAGE3_OUT_DIR / "PLAN-TSK-001.json"
-print(f"Updating plan: {plan_path}")
+# Load the plan
+with open(plan_path, 'r') as f:
+    plan_data = json.load(f)
 
-# Load plan (ignoring checksum for now since we want to fix it)
-data = DataPassingManager.load_artifact(plan_path, verify_checksum=False)
+# Fix issue 1: Convert filters from string to list
+if 'data' in plan_data and 'file_instructions' in plan_data['data']:
+    for file_inst in plan_data['data']['file_instructions']:
+        if isinstance(file_inst.get('filters'), str):
+            # Convert string to list
+            file_inst['filters'] = [file_inst['filters']]
+            print(f"✓ Fixed filters: {file_inst['filters']}")
 
-# Fix filepath
-for instruction in data.get("file_instructions", []):
-    filename = instruction.get("filename")
-    if filename:
-        # Remove the incorrect /data/ prefix and make it relative or use DATA_DIR in logic
-        # We'll just set filepath to filename so agent relies on DATA_DIR
-        instruction["filepath"] = filename
-        print(f"Fixed filepath for {filename}")
+# Fix issue 2: Convert validation_strategy from dict to string
+if 'data' in plan_data and 'validation_strategy' in plan_data['data']:
+    if isinstance(plan_data['data']['validation_strategy'], dict):
+        # Extract just the type
+        plan_data['data']['validation_strategy'] = plan_data['data']['validation_strategy'].get('type', 'temporal')
+        print(f"✓ Fixed validation_strategy: {plan_data['data']['validation_strategy']}")
 
-# Save with new checksum
-DataPassingManager.save_artifact(
-    data=data,
-    output_dir=STAGE3_OUT_DIR,
-    filename="PLAN-TSK-001.json",
-    metadata={"stage": "stage3", "type": "execution_plan", "note": "Fixed filepath"}
-)
+# Save the fixed plan
+with open(plan_path, 'w') as f:
+    json.dump(plan_data, f, indent=2)
 
-print("Plan updated successfully.")
+print(f"\n✅ Fixed plan saved to: {plan_path}")
+print("\nYou can now re-run the pipeline and it should proceed to stage 3B!")

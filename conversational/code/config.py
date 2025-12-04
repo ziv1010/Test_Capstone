@@ -105,6 +105,10 @@ MIN_UNIQUE_FRACTION = 0.01   # Minimum 1% unique values
 BENCHMARK_ITERATIONS = 3
 MAX_CV_THRESHOLD = 0.3  # Maximum coefficient of variation for valid results
 
+# Retry parameters
+MAX_RETRIES = 3  # Maximum number of retries for failed stages
+RETRY_STAGES = ["stage3_5a", "stage3_5b"]  # Stages that support retry
+
 # Global recursion limit for LangGraph
 RECURSION_LIMIT = 200
 
@@ -501,6 +505,7 @@ __all__ = [
     "STAGE_MAX_ROUNDS", "STAGE1_SAMPLE_ROWS",
     "MIN_NON_NULL_FRACTION", "MIN_UNIQUE_FRACTION",
     "BENCHMARK_ITERATIONS", "MAX_CV_THRESHOLD", "RECURSION_LIMIT",
+    "MAX_RETRIES", "RETRY_STAGES",
     # Classes
     "DataPassingManager", "StageTransition", "JSONSanitizer",
     # Utilities

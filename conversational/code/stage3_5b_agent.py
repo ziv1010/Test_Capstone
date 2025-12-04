@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
@@ -51,13 +51,20 @@ class Stage35BState(BaseModel):
 
 STAGE35B_SYSTEM_PROMPT = f"""You are a Method Benchmarking Agent responsible for testing and selecting the best forecasting method.
 
+## CRITICAL: Prevent Column Hallucination
+❌ DO NOT assume column names exist (e.g., 'Year', 'date', 'time')
+✅ ALWAYS call get_actual_columns() FIRST to see real columns
+✅ Use ONLY columns that actually exist in the prepared data
+✅ If date_col doesn't exist, use df.index or set date_col=None
+
 ## Your Role
-1. Load method proposals from Stage 3.5A
-2. Run each method {BENCHMARK_ITERATIONS} times for consistency
-3. Calculate metrics (MAE, RMSE, MAPE)
-4. Validate results aren't hallucinated (check consistency)
-5. Select the best method based on average performance
-6. Save comprehensive benchmark results
+1. **FIRST**: Call get_actual_columns() to verify columns
+2. Load method proposals from Stage 3.5A
+3. Run each method {BENCHMARK_ITERATIONS} times for consistency
+4. Calculate metrics (MAE, RMSE, MAPE)
+5. Validate results aren't hallucinated (check consistency)
+6. Select the best method based on average performance
+7. Save comprehensive benchmark results
 
 ## Consistency Validation (CRITICAL)
 You MUST run each method {BENCHMARK_ITERATIONS} times to check consistency:
@@ -68,6 +75,7 @@ You MUST run each method {BENCHMARK_ITERATIONS} times to check consistency:
 This prevents fake/random results from being selected.
 
 ## Available Tools
+- get_actual_columns: **CALL THIS FIRST** to prevent column hallucination
 - load_method_proposals: Load methods from Stage 3.5A
 - load_checkpoint: Resume from previous run if exists
 - save_checkpoint: Save progress after each method
@@ -168,6 +176,16 @@ def create_stage3_5b_agent():
                 "complete": True
             }
 
+        # Check if we just finished benchmarking
+        if len(messages) > 0:
+            last_msg = messages[-1]
+            if isinstance(last_msg, ToolMessage) and last_msg.name == "finish_benchmarking":
+                logger.info("Finish benchmarking signal received. Terminating Stage 3.5B.")
+                return {
+                    "messages": [AIMessage(content="Benchmarking complete. Ending stage.")],
+                    "complete": True
+                }
+
         response = llm_with_tools.invoke(messages)
 
         if DEBUG:
@@ -262,125 +280,30 @@ Remember: Run each method {BENCHMARK_ITERATIONS} times and check consistency!
             logger.info(f"Stage 3.5B complete: Selected {output.selected_method_id}")
             return output
         else:
-            # Fallback: create a default tester output
-            logger.warning("Agent failed to save tester output, creating default")
-            default_output = _create_default_tester_output(plan_id)
-            output_path = DataPassingManager.save_artifact(
-                data=default_output,
-                output_dir=STAGE3_5B_OUT_DIR,
-                filename=f"tester_{plan_id}.json",
-                metadata={"stage": "stage3_5b", "type": "tester_output", "fallback": True}
+            # NO FALLBACK - raise an error so the pipeline can retry
+            logger.error("Agent failed to save tester output. Stage must be retried.")
+            raise RuntimeError(
+                "Stage 3.5B failed: Agent did not save tester output. "
+                "This may be due to max_tokens error or other agent failure. "
+                "The stage should be retried."
             )
-            logger.info(f"Saved fallback tester output to {output_path}")
-            output = TesterOutput(**default_output)
-            return output
 
     except Exception as e:
-        logger.error(f"Stage 3.5B failed: {e}")
-        # Try to create fallback output
-        try:
-            logger.warning("Creating fallback tester output after exception")
-            default_output = _create_default_tester_output(plan_id)
-            output_path = DataPassingManager.save_artifact(
-                data=default_output,
-                output_dir=STAGE3_5B_OUT_DIR,
-                filename=f"tester_{plan_id}.json",
-                metadata={"stage": "stage3_5b", "type": "tester_output", "fallback": True}
+        # Check if it's a max_tokens error
+        error_msg = str(e).lower()
+        if 'max_tokens' in error_msg or 'token' in error_msg:
+            logger.error(f"Stage 3.5B failed with token error: {e}")
+            raise RuntimeError(
+                f"Stage 3.5B failed due to max_tokens error: {e}. "
+                "This stage needs to be retried."
             )
-            output = TesterOutput(**default_output)
-            return output
-        except Exception as fallback_error:
-            logger.error(f"Fallback also failed: {fallback_error}")
+        else:
+            logger.error(f"Stage 3.5B failed: {e}")
             raise
 
 
-def _create_default_tester_output(plan_id: str) -> dict:
-    """Create a default tester output as fallback."""
-    import pandas as pd
-    import numpy as np
-
-    # Try to load method proposals to get method info
-    try:
-        proposal_path = STAGE3_5A_OUT_DIR / f"method_proposal_{plan_id}.json"
-        proposal = DataPassingManager.load_artifact(proposal_path)
-        methods = proposal.get('methods_proposed', [])
-    except:
-        methods = [
-            {"method_id": "M1", "name": "Naive Forecast"},
-            {"method_id": "M2", "name": "Moving Average"},
-            {"method_id": "M3", "name": "Linear Regression"}
-        ]
-
-    # Try to run simple benchmarks
-    methods_tested = []
-    best_method_id = "M1"
-    best_mae = float('inf')
-
-    try:
-        prepared_path = STAGE3B_OUT_DIR / f"prepared_{plan_id}.parquet"
-        if prepared_path.exists():
-            df = pd.read_parquet(prepared_path)
-            # Get target column
-            plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
-            if plan_path.exists():
-                plan = DataPassingManager.load_artifact(plan_path)
-                target_col = plan.get('target_column')
-                if target_col and target_col in df.columns:
-                    # Simple benchmark: calculate variance as proxy for MAE
-                    target_std = df[target_col].std()
-                    for method in methods:
-                        method_id = method.get('method_id', 'M1')
-                        method_name = method.get('name', method_id)
-                        # Simulate different MAE levels
-                        if method_id == "M1":
-                            mae = target_std * 1.2
-                        elif method_id == "M2":
-                            mae = target_std * 1.0
-                        else:
-                            mae = target_std * 0.9
-
-                        if mae < best_mae:
-                            best_mae = mae
-                            best_method_id = method_id
-
-                        methods_tested.append({
-                            "method_id": method_id,
-                            "method_name": method_name,
-                            "iterations": [{"mae": mae, "rmse": mae * 1.2, "mape": 10.0}],
-                            "average_metrics": {"mae": mae, "rmse": mae * 1.2, "mape": 10.0},
-                            "is_valid": True,
-                            "coefficient_of_variation": 0.05
-                        })
-    except Exception as e:
-        logger.warning(f"Could not run simple benchmarks: {e}")
-
-    # If no methods tested, create dummy entries
-    if not methods_tested:
-        for method in methods:
-            methods_tested.append({
-                "method_id": method.get('method_id', 'M1'),
-                "method_name": method.get('name', 'Unknown'),
-                "iterations": [{"mae": 100.0, "rmse": 120.0, "mape": 10.0}],
-                "average_metrics": {"mae": 100.0, "rmse": 120.0, "mape": 10.0},
-                "is_valid": True,
-                "coefficient_of_variation": 0.05
-            })
-
-    # Find best method name
-    best_method_name = best_method_id
-    for m in methods_tested:
-        if m.get('method_id') == best_method_id:
-            best_method_name = m.get('method_name', best_method_id)
-            break
-
-    return {
-        "plan_id": plan_id,
-        "methods_tested": methods_tested,
-        "selected_method_id": best_method_id,
-        "selected_method_name": best_method_name,
-        "selection_rationale": "Selected based on lowest estimated MAE (fallback selection)",
-        "method_comparison_summary": "Methods compared using simplified benchmark (fallback mode)"
-    }
+# Removed _create_default_tester_output function
+# No more fallback logic - stages must complete successfully or fail properly
 
 
 # ============================================================================
@@ -390,7 +313,10 @@ def _create_default_tester_output(plan_id: str) -> dict:
 def stage3_5b_node(state: PipelineState) -> PipelineState:
     """
     Stage 3.5B node for the master pipeline graph.
+    Includes automatic retry logic for transient failures.
     """
+    from code.config import MAX_RETRIES, RETRY_STAGES
+    
     state.mark_stage_started("stage3_5b")
 
     plan_id = f"PLAN-{state.selected_task_id}" if state.selected_task_id else None
@@ -398,13 +324,54 @@ def stage3_5b_node(state: PipelineState) -> PipelineState:
         state.mark_stage_failed("stage3_5b", "No plan ID available")
         return state
 
-    try:
-        output = run_stage3_5b(plan_id, state)
-        state.stage3_5b_output = output
-        state.mark_stage_completed("stage3_5b", output)
-    except Exception as e:
-        state.mark_stage_failed("stage3_5b", str(e))
-
+    # Retry logic for resilient execution
+    max_retries = MAX_RETRIES if "stage3_5b" in RETRY_STAGES else 1
+    last_error = None
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"Stage 3.5B attempt {attempt}/{max_retries}")
+            output = run_stage3_5b(plan_id, state)
+            state.stage3_5b_output = output
+            state.mark_stage_completed("stage3_5b", output)
+            logger.info(f"✅ Stage 3.5B succeeded on attempt {attempt}")
+            return state
+        except Exception as e:
+            last_error = e
+            error_msg = str(e).lower()
+            
+            # Check if it's a retryable error
+            is_retryable = (
+                'max_tokens' in error_msg or 
+                'token' in error_msg or
+                'did not save' in error_msg
+            )
+            
+            if is_retryable and attempt < max_retries:
+                logger.warning(
+                    f"⚠️  Stage 3.5B attempt {attempt} failed with retryable error: {e}. "
+                    f"Retrying... ({attempt}/{max_retries})"
+                )
+                # Clean up any partial outputs before retry
+                # NOTE: We preserve checkpoints to allow resuming from the last completed method
+                tester_path = STAGE3_5B_OUT_DIR / f"tester_{plan_id}.json"
+                if tester_path.exists():
+                    logger.info(f"Removing partial tester output: {tester_path}")
+                    tester_path.unlink()
+                # Checkpoint is NOT deleted - agent will resume from last saved state
+                continue
+            else:
+                # Non-retryable error or max retries reached
+                if attempt >= max_retries:
+                    logger.error(
+                        f"❌ Stage 3.5B failed after {max_retries} attempts. "
+                        f"Last error: {e}"
+                    )
+                state.mark_stage_failed("stage3_5b", str(last_error))
+                return state
+    
+    # Should not reach here, but handle it
+    state.mark_stage_failed("stage3_5b", str(last_error))
     return state
 
 

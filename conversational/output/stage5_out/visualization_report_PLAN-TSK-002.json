@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-05T01:36:32.659706",
-    "checksum": "13da0cd7e2d0d141",
+    "timestamp": "2025-12-05T02:01:46.168875",
+    "checksum": "897249419c6de696",
     "version": "1.0",
     "stage": "stage5",
     "type": "visualization_report"
@@ -10,22 +10,34 @@
     "plan_id": "PLAN-TSK-002",
     "visualizations": [
       {
-        "filename": "actual_vs_predicted.png",
-        "description": "Scatter plot comparing actual vs predicted values"
+        "filepath": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage5_out/actual_vs_predicted.png",
+        "plot_type": "scatter",
+        "title": "Actual vs Predicted Values",
+        "description": "Comparison of actual and predicted crop yields with 1:1 reference line",
+        "columns_used": [
+          "actual",
+          "predicted"
+        ],
+        "filename": "actual_vs_predicted.png"
       },
       {
-        "filename": "residuals_histogram.png",
-        "description": "Distribution of prediction residuals"
-      },
-      {
-        "filename": "time_series_comparison.png",
-        "description": "Time series comparison of actual and predicted values across seasons"
-      },
-      {
-        "filename": "residuals_over_time.png",
-        "description": "Residuals plotted across seasons with reference line at zero"
+        "filepath": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage5_out/residuals_histogram.png",
+        "plot_type": "histogram",
+        "title": "Residual Distribution",
+        "description": "Histogram showing distribution of prediction errors (residuals)",
+        "columns_used": [
+          "residuals"
+        ],
+        "filename": "residuals_histogram.png"
       }
     ],
-    "summary": "Model shows significant prediction errors (MAPE 2953.5%) with negative bias (-6.33 mean residual). Residuals appear normally distributed but with high variance (14.98 std). Time series analysis reveals inconsistent prediction accuracy across seasons. Model performance requires improvement through feature engineering or algorithm adjustment."
+    "insights": [
+      "Model has high average error (MAE=11.21, RMSE=15.93)",
+      "MAPE of 2953% indicates large percentage errors",
+      "Negative mean residual (-6.33) shows consistent overprediction",
+      "Residuals follow normal distribution with no outliers"
+    ],
+    "summary": "The linear regression model shows significant prediction errors (MAPE=2953%) and consistent overprediction. While residuals are normally distributed, the high error metrics suggest the model may not be practically useful for crop yield forecasting without improvements in feature engineering or model selection.",
+    "task_answer": "The linear regression model with lag features achieved MAE=11.21 for crop yield prediction. However, the extremely high MAPE (2953%) suggests predictions may not be practically useful. The model consistently overpredicts by ~6.33 units on average."
   }
 }

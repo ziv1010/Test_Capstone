@@ -2,6 +2,7 @@
 Stage 5 Tools: Visualization
 
 Tools for creating visualizations and generating insights.
+Uses ReAct framework to understand task context and generate meaningful outputs.
 """
 
 import json
@@ -16,9 +17,183 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from code.config import (
     STAGE3_OUT_DIR, STAGE4_OUT_DIR, STAGE5_OUT_DIR, STAGE5_WORKSPACE,
+    STAGE2_OUT_DIR, STAGE3_5A_OUT_DIR, STAGE3_5B_OUT_DIR,
     DataPassingManager, logger
 )
 from code.utils import load_dataframe
+
+
+# ============================================================================
+# ReAct FRAMEWORK TOOLS
+# ============================================================================
+
+@tool
+def record_thought_stage5(thought: str) -> str:
+    """
+    Record your reasoning or thought process (ReAct framework).
+    
+    Use this to:
+    - Understand the original task goal before visualizing
+    - Plan which visualizations will best answer the task
+    - Reason about what insights would be most valuable
+    
+    Args:
+        thought: Your reasoning or thought
+        
+    Returns:
+        Confirmation of recorded thought
+    """
+    logger.info(f"[THOUGHT] {thought}")
+    return f"[THOUGHT RECORDED] {thought}"
+
+
+@tool
+def get_task_context(plan_id: str) -> str:
+    """
+    Get the original task goal and context to inform visualization decisions.
+    
+    Loads the task proposal, execution plan, and method details to understand
+    what question the user was trying to answer.
+    
+    Args:
+        plan_id: Plan ID (e.g., PLAN-TSK-001)
+    
+    Returns:
+        Task context including goal, problem statement, and method used
+    """
+    try:
+        context = [f"=== Task Context for {plan_id} ===\n"]
+        
+        # Extract task ID from plan ID
+        task_id = plan_id.replace("PLAN-", "") if plan_id.startswith("PLAN-") else plan_id
+        
+        # 1. Load Stage 2 task proposals to get original goal
+        proposals_path = STAGE2_OUT_DIR / "task_proposals.json"
+        if proposals_path.exists():
+            proposals_data = DataPassingManager.load_artifact(proposals_path)
+            proposals = proposals_data.get('proposals', [])
+            for proposal in proposals:
+                if proposal.get('id') == task_id:
+                    context.append("ORIGINAL TASK:")
+                    context.append(f"  Title: {proposal.get('title', 'N/A')}")
+                    context.append(f"  Category: {proposal.get('category', 'N/A')}")
+                    context.append(f"  Problem: {proposal.get('problem_statement', 'N/A')}")
+                    context.append(f"  Target Column: {proposal.get('target_column', 'N/A')}")
+                    context.append("")
+                    break
+        
+        # 2. Load Stage 3 execution plan for goal
+        plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
+        if plan_path.exists():
+            plan = DataPassingManager.load_artifact(plan_path)
+            context.append("EXECUTION PLAN:")
+            context.append(f"  Goal: {plan.get('goal', 'N/A')}")
+            context.append(f"  Target: {plan.get('target_column', 'N/A')}")
+            context.append(f"  Model Types: {plan.get('expected_model_types', [])}")
+            context.append("")
+        
+        # 3. Load Stage 3.5B tester output for method used
+        tester_path = STAGE3_5B_OUT_DIR / f"tester_{plan_id}.json"
+        if tester_path.exists():
+            tester = DataPassingManager.load_artifact(tester_path)
+            context.append("SELECTED METHOD:")
+            context.append(f"  Method: {tester.get('selected_method_name', 'N/A')}")
+            context.append(f"  Rationale: {tester.get('selection_rationale', 'N/A')}")
+            context.append("")
+        
+        # 4. Load Stage 4 execution result for metrics
+        result_path = STAGE4_OUT_DIR / f"execution_result_{plan_id}.json"
+        if result_path.exists():
+            result = DataPassingManager.load_artifact(result_path)
+            metrics = result.get('metrics', {})
+            context.append("EXECUTION RESULTS:")
+            context.append(f"  Status: {result.get('status', 'N/A')}")
+            context.append(f"  Summary: {result.get('summary', 'N/A')}")
+            if metrics:
+                context.append("  Metrics:")
+                for k, v in metrics.items():
+                    context.append(f"    - {k}: {v}")
+            context.append("")
+        
+        context.append("--- Use this context to create visualizations that answer the original task ---")
+        return "\n".join(context)
+        
+    except Exception as e:
+        return f"Error loading task context: {e}"
+
+
+@tool
+def generate_task_answer(
+    plan_id: str,
+    key_findings: str,
+    answer_to_task: str,
+    recommendations: str
+) -> str:
+    """
+    Generate a comprehensive answer to the original task question.
+    
+    This should be called after analyzing results and creating visualizations.
+    It produces a human-readable summary that answers the user's original question.
+    
+    Args:
+        plan_id: Plan ID
+        key_findings: Main findings from the analysis (bullet points)
+        answer_to_task: Direct answer to the original task question
+        recommendations: Recommendations based on results
+    
+    Returns:
+        Formatted task answer ready to be saved
+    """
+    try:
+        # Load task context for title
+        task_title = "Analysis Results"
+        plan_path = STAGE3_OUT_DIR / f"{plan_id}.json"
+        if plan_path.exists():
+            plan = DataPassingManager.load_artifact(plan_path)
+            task_title = plan.get('goal', task_title)
+        
+        # Load metrics
+        metrics_summary = ""
+        result_path = STAGE4_OUT_DIR / f"execution_result_{plan_id}.json"
+        if result_path.exists():
+            result = DataPassingManager.load_artifact(result_path)
+            metrics = result.get('metrics', {})
+            if metrics:
+                metrics_lines = [f"  • {k.upper()}: {v:.4f}" if isinstance(v, float) else f"  • {k.upper()}: {v}" 
+                                for k, v in metrics.items()]
+                metrics_summary = "\n".join(metrics_lines)
+        
+        # Format the answer
+        answer = f"""
+═══════════════════════════════════════════════════════════════
+TASK: {task_title}
+═══════════════════════════════════════════════════════════════
+
+📊 KEY FINDINGS:
+{key_findings}
+
+✅ ANSWER TO TASK:
+{answer_to_task}
+
+📈 MODEL PERFORMANCE:
+{metrics_summary if metrics_summary else '  No metrics available'}
+
+💡 RECOMMENDATIONS:
+{recommendations}
+
+═══════════════════════════════════════════════════════════════
+"""
+        
+        # Save to file
+        answer_path = STAGE5_OUT_DIR / f"task_answer_{plan_id}.txt"
+        with open(answer_path, 'w') as f:
+            f.write(answer)
+        
+        logger.info(f"Task answer saved to {answer_path}")
+        return f"Task answer generated and saved to: {answer_path}\n\n{answer}"
+        
+    except Exception as e:
+        return f"Error generating task answer: {e}"
 
 
 @tool
@@ -487,6 +662,25 @@ def save_visualization_report(report_json: str) -> str:
         if missing:
             return f"Error: Missing required fields: {missing}"
 
+        # Handle insights as string (convert to list)
+        if 'insights' in report and isinstance(report['insights'], str):
+            # Split by newlines or numbered lines
+            insights_str = report['insights']
+            insights_list = [line.strip() for line in insights_str.split('\n') if line.strip()]
+            # Remove numbering if present
+            cleaned = []
+            for line in insights_list:
+                if line and line[0].isdigit() and '. ' in line[:4]:
+                    cleaned.append(line.split('. ', 1)[1])
+                else:
+                    cleaned.append(line)
+            report['insights'] = cleaned
+
+        # Auto-derive filename from filepath for each visualization
+        for viz in report.get('visualizations', []):
+            if 'filepath' in viz and not viz.get('filename'):
+                viz['filename'] = Path(viz['filepath']).name
+
         plan_id = report['plan_id']
         filename = f"visualization_report_{plan_id}.json"
 
@@ -507,6 +701,11 @@ def save_visualization_report(report_json: str) -> str:
 
 # Export tools list
 STAGE5_TOOLS = [
+    # ReAct framework tools
+    record_thought_stage5,
+    get_task_context,
+    generate_task_answer,
+    # Core visualization tools
     load_execution_results,
     analyze_data_columns,
     plan_visualization,

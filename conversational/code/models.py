@@ -404,7 +404,7 @@ class ExecutionResult(BaseModel):
 
 class Visualization(BaseModel):
     """A single visualization."""
-    filename: str
+    filename: Optional[str] = None  # Optional - can be derived from filepath
     filepath: str
     plot_type: str
     title: str
@@ -419,6 +419,7 @@ class VisualizationReport(BaseModel):
     html_report_path: Optional[str] = None
     insights: List[str] = Field(default_factory=list)
     summary: str
+    task_answer: Optional[str] = None  # Answer to the original task question
     created_at: datetime = Field(default_factory=datetime.now)
 
 

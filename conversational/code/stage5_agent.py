@@ -47,87 +47,71 @@ class Stage5State(BaseModel):
 # SYSTEM PROMPT
 # ============================================================================
 
-STAGE5_SYSTEM_PROMPT = """You are a Visualization Agent responsible for creating informative visualizations.
+STAGE5_SYSTEM_PROMPT = """You are a Visualization Agent using the ReAct framework.
 
-## Your Role
-1. Load execution results from Stage 4
-2. Analyze the data structure
-3. Create publication-quality visualizations
-4. Generate insights from the analysis
-5. Save a comprehensive visualization report
+## YOUR WORKFLOW (ReAct: THOUGHT → ACTION → OBSERVATION)
 
-## Your Goals
-- Create clear, informative visualizations
-- Distinguish between ACTUAL (given) and PREDICTED (model output)
-- Tell a coherent story about the analysis
-- Generate actionable insights
+### Step 1: UNDERSTAND THE TASK (Required First!)
+Before creating ANY visualizations:
+1. Call `get_task_context` to understand the ORIGINAL GOAL of this analysis
+2. Use `record_thought_stage5` to reason about what visualizations would ANSWER the task
 
-## Available Tools
-- load_execution_results: Load Stage 4 results
-- analyze_data_columns: Understand what columns are available
-- plan_visualization: Plan a plot before creating it
-- create_plot: Create and save a custom plot
-- create_standard_plots: Create a standard set of plots
-- generate_insights: Extract insights from results
-- save_visualization_report: Save final report
+### Step 2: ANALYZE THE DATA
+1. Call `load_execution_results` to see available data
+2. Call `analyze_data_columns` to understand column types
+3. Use `record_thought_stage5` to plan visualizations that address the task goal
 
-## Required Visualizations
-Create at least these plots:
-1. **Actual vs Predicted Scatter** - How well do predictions match?
-2. **Time Series Comparison** - Actual and predicted over time
-3. **Residual Distribution** - Are errors normally distributed?
-4. **Residuals Over Time** - Any patterns in errors?
+### Step 3: CREATE VISUALIZATIONS
+Create plots that directly answer or illustrate the task goal:
+1. **Actual vs Predicted Scatter** - How accurate are the predictions?
+2. **Time Series** - Actual and predicted values over time
+3. **Residuals** - Distribution and patterns in prediction errors
+4. Use `create_standard_plots` or `create_plot` for custom visualizations
 
-Optional (if relevant):
-5. Feature importance or correlation
-6. Predictions by category (if categorical variables)
-7. Error analysis by time period
+### Step 4: GENERATE INSIGHTS & TASK ANSWER
+1. Call `generate_insights` to extract key findings
+2. Call `generate_task_answer` with:
+   - key_findings: Main discoveries from the analysis
+   - answer_to_task: Direct answer to the original task question
+   - recommendations: What actions to take based on results
 
-## Visualization Guidelines
-- Use clear titles and labels
-- Include legends
-- Use distinct colors for actual vs predicted
-- Add reference lines where helpful (e.g., perfect prediction line)
-- Keep it professional and publication-quality
+### Step 5: SAVE THE REPORT
+Call `save_visualization_report` with a JSON containing:
+- plan_id: The plan ID
+- visualizations: List of plots with {filepath, plot_type, title, description, columns_used}
+- insights: Key findings
+- summary: Overall assessment
+- task_answer: The answer generated in Step 4
 
-## Creating Custom Plots
-Use create_plot with matplotlib code:
-```python
-import matplotlib.pyplot as plt
-import seaborn as sns
+## IMPORTANT RULES
+1. ALWAYS start with `get_task_context` to understand what we're trying to answer
+2. ALWAYS call `generate_task_answer` before saving the report
+3. Use `record_thought_stage5` to document your reasoning
+4. Visualizations should TELL A STORY that answers the original task
 
-fig, ax = plt.subplots(figsize=(10, 6))
-# ... your plotting code ...
-plt.title('Your Title')
-plt.xlabel('X Label')
-plt.ylabel('Y Label')
-plt.tight_layout()
-# Figure is automatically saved
+## Visualization Quality Guidelines
+- Clear titles explaining what the plot shows
+- Proper axis labels with units if applicable
+- Legends for multiple series
+- Reference lines where helpful (e.g., perfect prediction line)
+- Distinct colors for actual vs predicted
+
+## Example ReAct Flow
 ```
+THOUGHT: First I need to understand what question this task is trying to answer.
+ACTION: get_task_context(plan_id)
+OBSERVATION: The task is to forecast crop area for 2022-23...
 
-## Insights Generation
-After creating visualizations, generate insights about:
-- Model performance (how good are the predictions?)
-- Error patterns (any systematic biases?)
-- Recommendations (what could be improved?)
+THOUGHT: I should create visualizations showing prediction quality and answer whether we can forecast crop area.
+ACTION: create_standard_plots(plan_id)
+OBSERVATION: Created 4 plots...
 
-## Workflow
-1. Load execution results
-2. Analyze data columns (understand what's available)
-3. Create standard plots first
-4. Generate insights
-5. Create any additional custom plots if needed
-6. Save visualization report
-
-## Report Requirements
-The report must include:
-- plan_id
-- visualizations: List of created plots
-- insights: Key findings and observations
-- summary: Overall assessment of results
-
-IMPORTANT: Create informative visualizations that tell the story of this analysis.
+THOUGHT: Now I'll generate the answer to the task.
+ACTION: generate_task_answer(plan_id, key_findings, answer, recommendations)
+OBSERVATION: Answer saved...
+```
 """
+
 
 
 # ============================================================================
@@ -199,29 +183,37 @@ def run_stage5(plan_id: str, pipeline_state: PipelineState = None) -> Visualizat
     initial_message = HumanMessage(content=f"""
 Create visualizations for plan: {plan_id}
 
-Steps:
-1. Load execution results from Stage 4
-2. Analyze data columns to understand what's available
-3. Create standard plots (actual vs predicted, time series, residuals)
-4. Generate insights from the results
-5. Create any additional helpful visualizations
-6. Save the visualization report using save_visualization_report tool
+## FOLLOW THE ReAct WORKFLOW:
 
-Required plots:
-- Actual vs Predicted scatter plot
-- Time series: actual and predicted over time
-- Residual histogram
-- Residuals over time
+### Step 1: UNDERSTAND THE TASK
+Call `get_task_context("{plan_id}")` FIRST to understand the original goal.
 
-The results data is at: {STAGE4_OUT_DIR}/results_{plan_id}.parquet
+### Step 2: ANALYZE DATA
+- Load execution results from Stage 4
+- Analyze data columns
 
-IMPORTANT: You MUST call save_visualization_report with a valid JSON containing:
+### Step 3: CREATE VISUALIZATIONS
+- Create standard plots (actual vs predicted, residuals)
+- Create any task-specific visualizations
+- Save plots to: {STAGE5_OUT_DIR}/
+
+### Step 4: GENERATE ANSWER
+Call `generate_task_answer` with:
+- key_findings: Main discoveries
+- answer_to_task: Direct answer to the task question
+- recommendations: Next steps
+
+### Step 5: SAVE REPORT
+Call `save_visualization_report` with JSON containing:
 - plan_id: "{plan_id}"
-- visualizations: list of plot info
+- visualizations: list (each with filepath, plot_type, title, description)
+- insights: key findings
 - summary: overall assessment
+- task_answer: the answer generated above
 
-Save plots to: {STAGE5_OUT_DIR}/
-Save report as: visualization_report_{plan_id}.json
+DATA LOCATION: {STAGE4_OUT_DIR}/results_{plan_id}.parquet
+
+IMPORTANT: Start with get_task_context to understand what we're trying to answer!
 """)
 
     config = {"configurable": {"thread_id": f"stage5_{plan_id}"}}
@@ -302,8 +294,11 @@ def _create_fallback_visualizations(plan_id: str) -> VisualizationReport:
             plt.close()
             visualizations.append({
                 "filename": f"{plan_id}_actual_vs_predicted.png",
+                "filepath": str(plot_path),
                 "plot_type": "scatter",
-                "description": "Actual vs Predicted scatter plot"
+                "title": "Actual vs Predicted",
+                "description": "Actual vs Predicted scatter plot",
+                "columns_used": [actual_col, pred_col]
             })
 
             # 2. Residuals histogram
@@ -320,8 +315,11 @@ def _create_fallback_visualizations(plan_id: str) -> VisualizationReport:
             plt.close()
             visualizations.append({
                 "filename": f"{plan_id}_residuals_histogram.png",
+                "filepath": str(plot_path),
                 "plot_type": "histogram",
-                "description": "Distribution of prediction errors"
+                "title": "Residual Distribution",
+                "description": "Distribution of prediction errors",
+                "columns_used": [actual_col, pred_col]
             })
 
             # Generate basic insights

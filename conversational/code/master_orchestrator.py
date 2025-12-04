@@ -224,41 +224,64 @@ def run_full_pipeline(task_id: str = None) -> PipelineState:
 def run_pipeline_stages(
     stages: List[str],
     task_id: str = None,
-    user_query: str = None
+    user_query: str = None,
+    resume_from_checkpoint: bool = True
 ) -> PipelineState:
     """
-    Run specific pipeline stages.
+    Run specific pipeline stages with checkpoint support.
 
     Args:
         stages: List of stage names to run
         task_id: Task ID (required for stages 3+)
         user_query: Optional user query for context
+        resume_from_checkpoint: If True, skip stages that already have outputs
 
     Returns:
         Final pipeline state
     """
     logger.info(f"Running stages: {stages}")
 
-    # Create initial state
-    state = PipelineState(
-        session_id=f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-        selected_task_id=task_id,
-        user_query=user_query
-    )
+    # Load cached state to check for existing outputs
+    if resume_from_checkpoint and task_id:
+        state, next_stage = load_cached_state(task_id)
+        state.user_query = user_query
 
-    # Run stages sequentially
+        # Filter out stages that are already complete
+        if next_stage != "stage1":
+            stages_to_skip = []
+            for stage in stages:
+                stage_idx = STAGE_ORDER.index(stage) if stage in STAGE_ORDER else -1
+                next_idx = STAGE_ORDER.index(next_stage) if next_stage in STAGE_ORDER else len(STAGE_ORDER)
+                if stage_idx < next_idx:
+                    stages_to_skip.append(stage)
+                    logger.info(f"Skipping {stage} - already has output (resuming from {next_stage})")
+
+            stages = [s for s in stages if s not in stages_to_skip]
+
+            if not stages:
+                logger.info("All requested stages already complete!")
+                return state
+    else:
+        # Create fresh state
+        state = PipelineState(
+            session_id=f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            selected_task_id=task_id,
+            user_query=user_query
+        )
+
+    # Run remaining stages sequentially
     for stage in stages:
         if stage not in STAGE_NODES:
             logger.warning(f"Unknown stage: {stage}")
             continue
 
         logger.info(f"Running {stage}")
-        
+
         # Log state if in debug mode
         from code.config import DEBUG
         if DEBUG:
             logger.debug(f"State before {stage}: {state.model_dump_json(indent=2, exclude={'session_id'})}")
-            
+
         state = STAGE_NODES[stage](state)
 
         # Check for failure
@@ -269,13 +292,21 @@ def run_pipeline_stages(
     return state
 
 
-def run_forecasting_pipeline(task_id: str) -> PipelineState:
+def run_forecasting_pipeline(task_id: str, resume: bool = True) -> PipelineState:
     """
     Run the forecasting pipeline: 3 → 3B → 3.5A → 3.5B → 4 → 5
+
+    Args:
+        task_id: Task ID to run the pipeline for
+        resume: If True, resume from existing checkpoints (default True)
+
+    Returns:
+        Final pipeline state
     """
     return run_pipeline_stages(
         ["stage3", "stage3b", "stage3_5a", "stage3_5b", "stage4", "stage5"],
-        task_id=task_id
+        task_id=task_id,
+        resume_from_checkpoint=resume
     )
 
 

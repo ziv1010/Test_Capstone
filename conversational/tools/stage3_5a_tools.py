@@ -61,6 +61,9 @@ def load_plan_and_data(plan_id: str = None) -> str:
 
         # Try to load prepared data
         prepared_path = STAGE3B_OUT_DIR / f"prepared_{plan_id}.parquet"
+        if DEBUG:
+            logger.debug(f"Looking for prepared data at: {prepared_path}")
+            
         if prepared_path.exists():
             df = pd.read_parquet(prepared_path)
             result.append(f"Prepared Data: {df.shape[0]} rows x {df.shape[1]} columns")
@@ -392,7 +395,38 @@ def save_method_proposal(proposal_json: str) -> str:
         Confirmation with saved path
     """
     try:
-        proposal = json.loads(proposal_json)
+        if DEBUG:
+            logger.debug(f"Saving proposal. Input type: {type(proposal_json)}")
+            logger.debug(f"Input preview: {str(proposal_json)[:200]}...")
+
+        if isinstance(proposal_json, dict):
+            proposal = proposal_json
+        else:
+            # Clean up the JSON string
+            cleaned_json = str(proposal_json).strip()
+            if cleaned_json.startswith("```json"):
+                cleaned_json = cleaned_json[7:]
+            if cleaned_json.startswith("```"):
+                cleaned_json = cleaned_json[3:]
+            if cleaned_json.endswith("```"):
+                cleaned_json = cleaned_json[:-3]
+            cleaned_json = cleaned_json.strip()
+            
+            try:
+                proposal = json.loads(cleaned_json)
+                # Handle double-encoded JSON (string inside string)
+                if isinstance(proposal, str):
+                    if DEBUG:
+                        logger.debug("Detected double-encoded JSON string, parsing again...")
+                    proposal = json.loads(proposal)
+            except json.JSONDecodeError:
+                # Try one more time with relaxed parsing if needed, or just fail
+                # Sometimes LLM escapes quotes weirdly
+                if cleaned_json.startswith('"') and cleaned_json.endswith('"'):
+                     cleaned_json = cleaned_json[1:-1].replace('\\"', '"')
+                proposal = json.loads(cleaned_json)
+                if isinstance(proposal, str):
+                    proposal = json.loads(proposal)
 
         # Validate structure
         required = ['plan_id', 'methods_proposed', 'data_split_strategy', 'date_column', 'target_column']
@@ -413,6 +447,9 @@ def save_method_proposal(proposal_json: str) -> str:
             metadata={"stage": "stage3_5a", "type": "method_proposal"}
         )
 
+        if DEBUG:
+            logger.debug(f"Successfully saved to {output_path}")
+
         return f"Method proposal saved to: {output_path}"
 
     except json.JSONDecodeError as e:
@@ -428,6 +465,19 @@ def reset_react_state():
     _stage3_5a_observations = []
 
 
+@tool
+def finish_method_proposal() -> str:
+    """
+    Signal that method proposal is complete.
+    
+    Call this ONLY after save_method_proposal returns success.
+    
+    Returns:
+        Completion message
+    """
+    return "Stage 3.5A Complete. You may now stop."
+
+
 # Export tools list
 STAGE3_5A_TOOLS = [
     load_plan_and_data,
@@ -437,4 +487,5 @@ STAGE3_5A_TOOLS = [
     python_sandbox_stage3_5a,
     get_method_templates,
     save_method_proposal,
+    finish_method_proposal,
 ]

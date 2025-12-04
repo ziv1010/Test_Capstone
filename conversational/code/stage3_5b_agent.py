@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from code.config import (
     STAGE3B_OUT_DIR, STAGE3_5A_OUT_DIR, STAGE3_5B_OUT_DIR, SECONDARY_LLM_CONFIG,
     STAGE_MAX_ROUNDS, BENCHMARK_ITERATIONS, MAX_CV_THRESHOLD,
-    DataPassingManager, logger
+    DataPassingManager, logger, DEBUG, RECURSION_LIMIT
 )
 from code.models import TesterOutput, PipelineState
 from tools.stage3_5b_tools import STAGE3_5B_TOOLS, reset_benchmark_state
@@ -77,6 +77,7 @@ This prevents fake/random results from being selected.
 - validate_consistency: Check if results are consistent
 - select_best_method: Select winner based on results
 - save_tester_output: Save final results
+- finish_benchmarking: Signal completion (Call this LAST)
 
 ## Benchmark Code Structure
 For each method, your benchmark code should:
@@ -125,6 +126,7 @@ print(json.dumps({{"mae": mae, "rmse": rmse, "mape": mape}}))
 4. Compare all methods
 5. Select best method (lowest average MAE for valid methods)
 6. Save tester output
+7. Call finish_benchmarking() to end the stage
 
 ## Error Handling
 - If a method fails, record the error and move to next
@@ -167,6 +169,11 @@ def create_stage3_5b_agent():
             }
 
         response = llm_with_tools.invoke(messages)
+
+        if DEBUG:
+            logger.debug(f"Stage 3.5B Agent Response: {response.content}")
+            if response.tool_calls:
+                logger.debug(f"Tool Calls: {response.tool_calls}")
 
         return {
             "messages": [response],
@@ -232,7 +239,10 @@ Save output as: tester_{plan_id}.json
 Remember: Run each method {BENCHMARK_ITERATIONS} times and check consistency!
 """)
 
-    config = {"configurable": {"thread_id": f"stage3_5b_{plan_id}"}}
+    config = {
+        "configurable": {"thread_id": f"stage3_5b_{plan_id}"},
+        "recursion_limit": RECURSION_LIMIT
+    }
     initial_state = Stage35BState(messages=[initial_message], plan_id=plan_id)
 
     try:

@@ -83,6 +83,7 @@ This prevents loops and ensures transparent reasoning.
 - save_prepared_data: Save the final prepared dataset
 - verify_prepared_data: Verify the saved data is correct
 - get_react_summary: Review your reasoning trail
+- finish_data_preparation: Signal completion (Call this LAST)
 
 ## Workflow
 1. Load the execution plan
@@ -103,6 +104,7 @@ This prevents loops and ensures transparent reasoning.
    - ACT: Apply imputation to each column
    - OBSERVE: Verify zero nulls
 6. Save the prepared data
+7. Call finish_data_preparation() to end the stage
 
 ## Python Code Guidelines
 When using run_data_prep_code:

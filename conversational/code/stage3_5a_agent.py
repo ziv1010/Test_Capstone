@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from code.config import (
     STAGE3_OUT_DIR, STAGE3B_OUT_DIR, STAGE3_5A_OUT_DIR, SECONDARY_LLM_CONFIG,
-    STAGE_MAX_ROUNDS, DataPassingManager, logger
+    STAGE_MAX_ROUNDS, DataPassingManager, logger, DEBUG, RECURSION_LIMIT
 )
 from code.models import MethodProposalOutput, PipelineState
 from tools.stage3_5a_tools import STAGE3_5A_TOOLS, reset_react_state
@@ -70,6 +70,7 @@ Analyze the data and task, then propose EXACTLY 3 forecasting methods:
 - python_sandbox_stage3_5a: Execute Python for analysis
 - get_method_templates: Get method implementation templates
 - save_method_proposal: Save final proposals
+- finish_method_proposal: Signal completion (Call this LAST)
 
 ## Method Requirements
 Each method MUST include:
@@ -112,6 +113,7 @@ You must also specify:
 5. Create 3 methods with complete code
 6. Define data split strategy
 7. Save the method proposal
+8. Call finish_method_proposal() to end the stage
 
 ## Method Selection Guidelines
 - For SHORT time series (<100 points): Prefer simple methods
@@ -148,6 +150,11 @@ def create_stage3_5a_agent():
             }
 
         response = llm_with_tools.invoke(messages)
+
+        if DEBUG:
+            logger.debug(f"Stage 3.5A Agent Response: {response.content}")
+            if response.tool_calls:
+                logger.debug(f"Tool Calls: {response.tool_calls}")
 
         return {
             "messages": [response],
@@ -214,7 +221,10 @@ Each method's code must:
 Save output as: method_proposal_{plan_id}.json
 """)
 
-    config = {"configurable": {"thread_id": f"stage3_5a_{plan_id}"}}
+    config = {
+        "configurable": {"thread_id": f"stage3_5a_{plan_id}"},
+        "recursion_limit": RECURSION_LIMIT
+    }
     initial_state = Stage35AState(messages=[initial_message], plan_id=plan_id)
 
     try:

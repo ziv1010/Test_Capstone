@@ -131,7 +131,25 @@ def save_checkpoint(plan_id: str, methods_completed: str, results_json: str) -> 
         Confirmation
     """
     try:
-        results = json.loads(results_json)
+        if isinstance(results_json, dict):
+            results = results_json
+        else:
+            # Clean up the JSON string
+            cleaned_json = str(results_json).strip()
+            if cleaned_json.startswith("```json"):
+                cleaned_json = cleaned_json[7:]
+            if cleaned_json.startswith("```"):
+                cleaned_json = cleaned_json[3:]
+            if cleaned_json.endswith("```"):
+                cleaned_json = cleaned_json[:-3]
+            cleaned_json = cleaned_json.strip()
+
+            results = json.loads(cleaned_json)
+            # Handle double-encoded JSON
+            if isinstance(results, str):
+                if DEBUG:
+                    logger.debug("Detected double-encoded JSON string, parsing again...")
+                results = json.loads(results)
 
         checkpoint = {
             "plan_id": plan_id,
@@ -439,7 +457,28 @@ def save_tester_output(output_json: str) -> str:
         Confirmation with saved path
     """
     try:
-        output = json.loads(output_json)
+        if DEBUG:
+            logger.debug(f"Saving tester output. Input type: {type(output_json)}")
+
+        if isinstance(output_json, dict):
+            output = output_json
+        else:
+            # Clean up the JSON string
+            cleaned_json = str(output_json).strip()
+            if cleaned_json.startswith("```json"):
+                cleaned_json = cleaned_json[7:]
+            if cleaned_json.startswith("```"):
+                cleaned_json = cleaned_json[3:]
+            if cleaned_json.endswith("```"):
+                cleaned_json = cleaned_json[:-3]
+            cleaned_json = cleaned_json.strip()
+
+            output = json.loads(cleaned_json)
+            # Handle double-encoded JSON
+            if isinstance(output, str):
+                if DEBUG:
+                    logger.debug("Detected double-encoded JSON string, parsing again...")
+                output = json.loads(output)
 
         # Validate structure
         required = ['plan_id', 'methods_tested', 'selected_method_id', 'selection_rationale']
@@ -472,6 +511,19 @@ def reset_benchmark_state():
     _stage3_5b_thoughts = []
 
 
+@tool
+def finish_benchmarking() -> str:
+    """
+    Signal that benchmarking is complete.
+    
+    Call this ONLY after save_tester_output returns success.
+    
+    Returns:
+        Completion message
+    """
+    return "Stage 3.5B Complete. You may now stop."
+
+
 # Export tools list
 STAGE3_5B_TOOLS = [
     load_method_proposals,
@@ -483,4 +535,5 @@ STAGE3_5B_TOOLS = [
     validate_consistency,
     select_best_method,
     save_tester_output,
+    finish_benchmarking,
 ]

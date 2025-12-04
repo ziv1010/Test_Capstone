@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-04T04:19:06.696303",
-    "checksum": "34caead69d8c2a6c",
+    "timestamp": "2025-12-04T05:26:34.335588",
+    "checksum": "c30c693887e42e07",
     "version": "1.0",
     "stage": "stage3",
     "type": "execution_plan"
@@ -9,12 +9,12 @@
   "data": {
     "plan_id": "PLAN-TSK-001",
     "selected_task_id": "TSK-001",
-    "goal": "Forecast annual food grain production in India using historical area, production, and yield data from 2020-2024",
+    "goal": "Forecast annual production of major food grains in India using historical area, production, and yield data from 2020-2024",
     "task_category": "forecasting",
     "file_instructions": [
       {
         "filename": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
-        "filepath": "data/",
+        "filepath": "/data/All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
         "columns_to_use": [
           "Crop",
           "Season",
@@ -34,53 +34,60 @@
           "Yield-2023-24",
           "Yield-2024-25"
         ],
-        "filters": [],
+        "filters": [
+          "Area-2020-21.notna()",
+          "Production-2020-21.notna()"
+        ],
         "parse_dates": []
       }
     ],
     "join_steps": [],
     "feature_engineering": [
       {
-        "name": "lag_production_1yr",
-        "description": "Create 1-year lag of production values",
+        "name": "lag_1",
+        "description": "1-year lag of production",
         "source_columns": [
           "Production-2023-24"
         ],
-        "implementation_code": "df['lag_production_1yr'] = df['Production-2023-24'].shift(1)"
+        "implementation_code": "df['lag_1'] = df['Production-2023-24'].shift(1)",
+        "dtype": "float64"
       },
       {
-        "name": "rolling_area_mean",
-        "description": "3-year rolling mean of area",
+        "name": "rolling_mean_2y",
+        "description": "2-year rolling mean of production",
         "source_columns": [
-          "Area-2020-21",
-          "Area-2021-22",
-          "Area-2022-23",
-          "Area-2023-24",
-          "Area-2024-25"
+          "Production-2022-23",
+          "Production-2023-24"
         ],
-        "implementation_code": "df['rolling_area_mean'] = df[[\"Area-2020-21\", \"Area-2021-22\", \"Area-2022-23\", \"Area-2023-24\", \"Area-2024-25\"]].rolling(3).mean().iloc[:, -1]"
-      },
-      {
-        "name": "season_category",
-        "description": "Encode season as categorical feature",
-        "source_columns": [
-          "Season"
-        ],
-        "implementation_code": "df['season_category'] = df['Season'].astype('category').cat.codes"
+        "implementation_code": "df['rolling_mean_2y'] = df[[\"Production-2022-23\", \"Production-2023-24\"]].mean(axis=1)",
+        "dtype": "float64"
       }
     ],
     "target_column": "Production-2024-25",
-    "date_column": "Year (derived from column names)",
+    "date_column": "Season",
     "validation_strategy": "temporal",
+    "train_end_date": "2023-06-30",
+    "validation_end_date": "2024-06-30",
     "expected_model_types": [
-      "ARIMA",
-      "Random Forest Regressor",
-      "XGBoost Regressor"
+      "arima",
+      "random_forest",
+      "linear_regression"
     ],
     "evaluation_metrics": [
-      "MAE",
-      "RMSE",
-      "R²"
+      "mae",
+      "rmse",
+      "mape"
+    ],
+    "output_columns": [
+      "Crop",
+      "Season",
+      "Production-2024-25",
+      "predicted_Production-2024-25"
+    ],
+    "artifacts_to_save": [
+      "model",
+      "predictions",
+      "feature_importance"
     ]
   }
 }

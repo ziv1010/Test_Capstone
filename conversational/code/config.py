@@ -106,7 +106,7 @@ BENCHMARK_ITERATIONS = 3
 MAX_CV_THRESHOLD = 0.3  # Maximum coefficient of variation for valid results
 
 # Global recursion limit for LangGraph
-RECURSION_LIMIT = 150
+RECURSION_LIMIT = 200
 
 # ============================================================================
 # ROBUST DATA PASSING MECHANISMS

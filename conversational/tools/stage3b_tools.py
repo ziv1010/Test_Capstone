@@ -389,6 +389,21 @@ def reset_react_state():
     _stage3b_observations = []
 
 
+@tool
+def finish_data_preparation() -> str:
+    """
+    Signal that data preparation is complete.
+    
+    Call this ONLY after:
+    1. Data has been saved (save_prepared_data)
+    2. Data has been verified (verify_prepared_data)
+    
+    Returns:
+        Completion message
+    """
+    return "Stage 3B Complete. You may now stop."
+
+
 # Export tools list
 STAGE3B_TOOLS = [
     load_execution_plan,
@@ -399,4 +414,5 @@ STAGE3B_TOOLS = [
     save_prepared_data,
     verify_prepared_data,
     get_react_summary,
+    finish_data_preparation,
 ]

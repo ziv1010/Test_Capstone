@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from code.config import (
     SUMMARIES_DIR, STAGE2_OUT_DIR, SECONDARY_LLM_CONFIG,
-    STAGE_MAX_ROUNDS, DataPassingManager, logger
+    STAGE_MAX_ROUNDS, RECURSION_LIMIT, DataPassingManager, logger
 )
 from code.models import TaskProposal, Stage2Output, PipelineState
 from tools.stage2_tools import STAGE2_TOOLS
@@ -229,7 +229,11 @@ When complete, save proposals and summarize what you proposed.
 """)
 
     # Use unique thread_id to ensure fresh conversation each run
-    config = {"configurable": {"thread_id": f"stage2_{session_id}_{timestamp}"}}
+    # Also set recursion_limit to allow enough iterations for the agent to complete
+    config = {
+        "configurable": {"thread_id": f"stage2_{session_id}_{timestamp}"},
+        "recursion_limit": RECURSION_LIMIT
+    }
     initial_state = Stage2State(messages=[initial_message])
 
     try:
@@ -301,7 +305,11 @@ When creating alternative tasks, consider how multiple datasets could be combine
 """)
 
     # Use unique thread_id to ensure fresh conversation each run
-    config = {"configurable": {"thread_id": f"stage2_query_{session_id}_{timestamp}"}}
+    # Also set recursion_limit to allow enough iterations for the agent to complete
+    config = {
+        "configurable": {"thread_id": f"stage2_query_{session_id}_{timestamp}"},
+        "recursion_limit": RECURSION_LIMIT
+    }
     initial_state = Stage2State(messages=[initial_message])
 
     try:

@@ -323,7 +323,7 @@ class MethodProposalOutput(BaseModel):
     plan_id: str
     methods_proposed: List[ForecastingMethod] = Field(..., min_length=3, max_length=3)
     data_split_strategy: DataSplitStrategy
-    date_column: str
+    date_column: Optional[str] = None
     target_column: str
     feature_columns: List[str] = Field(default_factory=list)
     data_preprocessing_steps: List[str] = Field(default_factory=list)

@@ -1,67 +1,71 @@
 {
   "_meta": {
-    "timestamp": "2025-12-04T13:19:56.149409",
-    "checksum": "00829694261b7789",
+    "timestamp": "2025-12-04T16:04:24.184689",
+    "checksum": "0d85be7d9a4857eb",
     "version": "1.0"
   },
   "data": {
     "proposals": [
       {
-        "id": "TSK-4106",
+        "id": "TSK-001",
         "category": "forecasting",
-        "title": "Custom Forecasting: Production",
-        "problem_statement": "Forecast annual food grain production in India",
+        "title": "Forecast Food Grain Production",
+        "problem_statement": "Predict future food grain production values using historical area, production, and yield data across different seasons. The dataset contains yearly estimates from 2020-21 to 2024-25 with missing values in earlier years.",
         "required_datasets": [
-          "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv"
+          "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.summary.json"
         ],
-        "target_column": "Production",
-        "target_dataset": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
-        "feature_columns": [],
-        "validation_plan": {
-          "train_fraction": 0.7,
-          "validation_fraction": 0.15,
-          "test_fraction": 0.15,
-          "split_strategy": "temporal",
-          "date_column": "Year"
-        },
-        "feasibility_score": 0.7,
-        "feasibility_notes": "Custom task created from user query: Forecast annual food grain production in India",
-        "forecast_horizon": 30,
-        "forecast_granularity": "daily"
+        "target_column": "Production-2024-25",
+        "target_dataset": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.summary.json",
+        "feasibility_score": 0.6,
+        "forecast_horizon": "1 year",
+        "forecast_granularity": "annual"
       },
       {
-        "id": "TSK-4151",
-        "category": "forecasting",
-        "title": "Custom Forecasting: Quantity",
-        "problem_statement": "Forecast rice exports to Bangladesh",
+        "id": "TSK-002",
+        "category": "regression",
+        "title": "Predict Rice Export Values",
+        "problem_statement": "Estimate future rice export values to Bangladesh using historical quantity and value data from 2018-19 to 2024-25. The dataset has significant missing values in recent years.",
         "required_datasets": [
-          "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.csv"
+          "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.summary.json"
         ],
-        "target_column": "Quantity",
-        "target_dataset": "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.csv",
-        "feature_columns": [],
-        "validation_plan": {
-          "train_fraction": 0.7,
-          "validation_fraction": 0.15,
-          "test_fraction": 0.15,
-          "split_strategy": "temporal",
-          "date_column": "Year"
-        },
-        "feasibility_score": 0.7,
-        "feasibility_notes": "Custom task created from user query: Forecast rice exports to Bangladesh",
-        "forecast_horizon": 30,
-        "forecast_granularity": "daily"
+        "target_column": "2024 - 25-Value (USD)",
+        "target_dataset": "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.summary.json",
+        "feasibility_score": 0.4
       },
       {
-        "id": "TSK-4596",
-        "category": "forecasting",
-        "title": "Custom Forecasting: Production",
-        "problem_statement": "Forecast annual food grain production in India",
+        "id": "TSK-003",
+        "category": "clustering",
+        "title": "Cluster Crops by Area Trends",
+        "problem_statement": "Identify natural groupings of crops based on their area trends from 2015-16 to 2024-25. This could reveal patterns in crop cultivation priorities.",
         "required_datasets": [
-          "food_grain_production.csv"
+          "All-India-profile_-Crop-wise-Area.summary.json"
         ],
-        "target_column": "Production",
-        "target_dataset": "food_grain_production.csv",
+        "target_column": "Area-2024-25",
+        "target_dataset": "All-India-profile_-Crop-wise-Area.summary.json",
+        "feasibility_score": 0.7
+      },
+      {
+        "id": "TSK-004",
+        "category": "classification",
+        "title": "Classify Crops by Yield Patterns",
+        "problem_statement": "Develop a model to classify crops into yield categories using historical yield data from 2020-21 to 2024-25. This could help prioritize high-yield crops.",
+        "required_datasets": [
+          "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.summary.json"
+        ],
+        "target_column": "Yield-2024-25",
+        "target_dataset": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.summary.json",
+        "feasibility_score": 0.6
+      },
+      {
+        "id": "TSK-4464",
+        "category": "forecasting",
+        "title": "Custom Forecasting: 2024 - 25-Value (USD)",
+        "problem_statement": "Predict future rice exports to Bangladesh",
+        "required_datasets": [
+          "rice_exports_bangladesh.csv"
+        ],
+        "target_column": "2024 - 25-Value (USD)",
+        "target_dataset": "rice_exports_bangladesh.csv",
         "feature_columns": [],
         "validation_plan": {
           "train_fraction": 0.7,
@@ -71,7 +75,7 @@
           "date_column": "Year"
         },
         "feasibility_score": 0.7,
-        "feasibility_notes": "Custom task created from user query: Forecast annual food grain production in India",
+        "feasibility_notes": "Custom task created from user query: Predict future rice exports to Bangladesh",
         "forecast_horizon": 30,
         "forecast_granularity": "daily"
       }

@@ -60,19 +60,18 @@ STAGE35B_SYSTEM_PROMPT = f"""You are a Method Benchmarking Agent responsible for
 ## Your Role
 1. **FIRST**: Call get_actual_columns() to verify columns
 2. Load method proposals from Stage 3.5A
-3. Run each method {BENCHMARK_ITERATIONS} times for consistency
-4. Calculate metrics (MAE, RMSE, MAPE)
-5. Validate results aren't hallucinated (check consistency)
-6. Select the best method based on average performance
-7. Save comprehensive benchmark results
+3. Detect Data Format (Long vs Wide) based on proposal
+4. Run each method {BENCHMARK_ITERATIONS} times for consistency
+5. Calculate metrics (MAE, RMSE, MAPE)
+6. Validate results aren't hallucinated (check consistency)
+7. Select the best method based on average performance
+8. Save comprehensive benchmark results
 
 ## Consistency Validation (CRITICAL)
 You MUST run each method {BENCHMARK_ITERATIONS} times to check consistency:
 - Calculate coefficient of variation (CV) of metrics across runs
 - If CV < {MAX_CV_THRESHOLD}: Results are VALID
 - If CV >= {MAX_CV_THRESHOLD}: Results may be HALLUCINATED
-
-This prevents fake/random results from being selected.
 
 ## Available Tools
 - get_actual_columns: **CALL THIS FIRST** to prevent column hallucination
@@ -87,8 +86,23 @@ This prevents fake/random results from being selected.
 - save_tester_output: Save final results
 - finish_benchmarking: Signal completion (Call this LAST)
 
-## Benchmark Code Structure
-For each method, your benchmark code should:
+## Execution Strategies (CRITICAL)
+
+### 1. LONG Format (Row-wise Split)
+- Use standard train/test split on rows.
+- `train_df = df.iloc[:train_size]`
+- `test_df = df.iloc[train_size:]`
+
+### 2. WIDE Format (Column-wise Split) - **COMMON**
+- **Do NOT split rows!** Use ALL rows for both Train and Test.
+- **Train Phase**: Predict the *previous* year (t-1) using years before it.
+  - You must construct `train_df` by shifting columns or using `lag` features for year (t-1).
+  - Target for Train: The column for year (t-1).
+- **Test Phase**: Predict the *target* year (t) using years before it.
+  - `test_df` is the original dataframe (or subset with correct features).
+  - Target for Test: The actual target column (year t).
+
+#### Wide Format Code Template:
 ```python
 import pandas as pd
 import numpy as np
@@ -98,35 +112,58 @@ from pathlib import Path
 STAGE3B_OUT_DIR = Path('{STAGE3B_OUT_DIR}')
 df = pd.read_parquet(STAGE3B_OUT_DIR / 'prepared_{{plan_id}}.parquet')
 
-# Define the method function (from proposal)
+# Identify Target and Previous Year Columns
+target_col = '2024 - 25-Value (USD)' # Example
+prev_target_col = '2023 - 24-Value (USD)' # Example
+
+# --- TRAIN SET CONSTRUCTION (Predicting t-1) ---
+# We need features that predict prev_target_col.
+# If we have lag features for target_col (e.g. lag_1 = t-1),
+# then lag features for prev_target_col would be shifted (e.g. lag_1 = t-2).
+# SIMPLER APPROACH:
+# If the method uses specific columns (e.g. '2022', '2023'), shift them back by 1 year.
+# Or if using 'lag' columns, reconstruct them for the previous year.
+
+# Example for Naive (Last Value):
+# Train: Predict 2023 using 2022.
+# Test: Predict 2024 using 2023.
+
+# Construct Train DF (All rows)
+train_df = df.copy()
+# ... logic to set up features for predicting prev_target_col ...
+
+# Construct Test DF (All rows)
+test_df = df.copy()
+# ... logic to set up features for predicting target_col ...
+
+# Define Method
 def predict_method(train_df, test_df, target_col, date_col, **params):
     # ... implementation ...
     return pd.DataFrame({{'predicted': predictions}}, index=test_df.index)
 
-# Split data (use the split strategy from proposal)
-# ...
+# Run Prediction
+# Note: For Wide format, we might run 'predict' on test_df directly trained on train_df
+# OR if the method is simple (like Naive), just apply logic.
 
-# Run prediction
-predictions = predict_method(train_df, test_df, target_col, date_col)
+# Example Naive Execution:
+# Train metrics (Optional but good for validation)
+# Test metrics (Required)
+predictions = predict_method(train_df, test_df, target_col, None)
 
-# Calculate metrics
+# Calculate Metrics
 actual = test_df[target_col].values
 predicted = predictions['predicted'].values
 
 mae = np.mean(np.abs(actual - predicted))
-rmse = np.sqrt(np.mean((actual - predicted) ** 2))
-mape = np.mean(np.abs((actual - predicted) / actual)) * 100
-
-# Print results as JSON
-import json
-print(json.dumps({{"mae": mae, "rmse": rmse, "mape": mape}}))
+# ...
+print(json.dumps({{"mae": mae, ...}}))
 ```
 
 ## Workflow
 1. Load method proposals
 2. Check for existing checkpoint (resume if exists)
 3. For each method (M1, M2, M3):
-   a. THINK about how to run this method
+   a. THINK about how to run this method (Long vs Wide strategy)
    b. Run {BENCHMARK_ITERATIONS} iterations
    c. Collect metrics from each run
    d. Validate consistency (check CV)

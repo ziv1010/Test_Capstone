@@ -62,11 +62,34 @@ Analyze the data and task, then propose EXACTLY 3 forecasting methods:
 
 ## Your Goals
 1. **FIRST**: Call get_actual_columns() to see what columns exist
-2. Understand the data structure and time series characteristics
+2. Understand the data structure (Long vs Wide) and time series characteristics
 3. Analyze temporal patterns (trend, seasonality, frequency)
 4. Propose 3 diverse, appropriate methods
 5. Write complete, executable implementation code using ONLY existing columns
 6. Define data split strategy
+
+## Data Formats & Split Strategies (CRITICAL)
+You must detect if the data is **LONG** (time in rows) or **WIDE** (time in columns).
+
+### 1. LONG Format (Time in Rows)
+- Typical structure: [Entity, Date, Target]
+- Split Strategy: **Row-wise Temporal**
+  - Train: First N rows (past dates)
+  - Test: Last M rows (future dates)
+
+### 2. WIDE Format (Time in Columns) - **COMMON IN THIS PIPELINE**
+- Typical structure: [Entity, Feature1, ... Year1, Year2, ... TargetYear]
+- Example: Columns are '2018', '2019', ... '2024' (Target)
+- Split Strategy: **Column-wise Temporal**
+  - **Train**: Use data from past years to predict the *previous* year.
+    - Input: Years[start] to Years[t-2]
+    - Target: Years[t-1]
+  - **Test**: Use data from past years to predict the *target* year.
+    - Input: Years[start+1] to Years[t-1]
+    - Target: Years[t] (The actual target column)
+  - **Validation**: Can be same as Train or a separate hold-out column.
+
+**IMPORTANT**: For Wide format, do NOT split rows! Use ALL rows for both Train and Test, but change the *columns* used as features and target.
 
 ## Available Tools
 - get_actual_columns: **CALL THIS FIRST** to prevent column hallucination
@@ -105,22 +128,23 @@ def predict_method_name(train_df, test_df, target_col, date_col, **params):
 
 ## Data Split Strategy
 You must also specify:
-- strategy_type: "temporal" (preferred for time series) or "random"
-- date_column: Column used for splitting
+- strategy_type: "temporal_row" (Long) or "temporal_column" (Wide)
+- date_column: Column used for splitting (or null for Wide)
 - target_column: Column being predicted
-- train_period: Training data range/size
-- validation_period: Validation data range/size
-- test_period: Test data range/size
+- train_period: Description of training data (e.g., "Years 2018-2023")
+- validation_period: Description of validation data
+- test_period: Description of test data (e.g., "Year 2024")
 
 ## Workflow
 1. Load plan and prepared data info
 2. Analyze time series characteristics (trend, seasonality, frequency)
-3. THINK about which methods are appropriate
-4. Get method templates for reference
-5. Create 3 methods with complete code
-6. Define data split strategy
-7. Save the method proposal
-8. Call finish_method_proposal() to end the stage
+3. Determine Data Format (Long vs Wide)
+4. THINK about which methods are appropriate for this format
+5. Get method templates for reference
+6. Create 3 methods with complete code
+7. Define data split strategy
+8. Save the method proposal
+9. Call finish_method_proposal() to end the stage
 
 ## Method Selection Guidelines
 - For SHORT time series (<100 points): Prefer simple methods

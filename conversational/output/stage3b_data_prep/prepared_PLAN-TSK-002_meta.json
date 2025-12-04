@@ -1,0 +1,46 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-04T16:10:19.164510",
+    "checksum": "f6548d129487dc9f",
+    "version": "1.0",
+    "stage": "stage3b",
+    "type": "prepared_data_metadata"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-002",
+    "prepared_file_path": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage3b_data_prep/prepared_PLAN-TSK-002.parquet",
+    "original_row_count": 6,
+    "final_row_count": 6,
+    "columns_created": [
+      "HS Code",
+      "Description",
+      "2018 - 19-Value (USD)",
+      "2019 - 20-Value (USD)",
+      "2020 - 21-Value (USD)",
+      "2021 - 22-Value (USD)",
+      "2022 - 23-Value (USD)",
+      "2023 - 24-Value (USD)",
+      "2024 - 25-Value (USD)",
+      "lag_1",
+      "lag_2",
+      "lag_3",
+      "rolling_mean_3y"
+    ],
+    "transformations_applied": [
+      "1. Filtered rows with non-null target values\n2. Imputed missing values in '2023 - 24-Value (USD)' with median\n3. Created lag_1 (2022-23)",
+      "lag_2 (2021-22)",
+      "lag_3 (2020-21)\n4. Created rolling_mean_3y of 2022-23",
+      "2021-22",
+      "2020-21"
+    ],
+    "data_quality_report": {
+      "total_rows": 6,
+      "total_columns": 13,
+      "null_counts": {},
+      "duplicate_rows": 0
+    },
+    "has_no_nulls": true,
+    "ready_for_modeling": true,
+    "quality_notes": "Final dataset has 6 rows, 13 columns with zero null values. All feature engineering steps completed successfully."
+  }
+}

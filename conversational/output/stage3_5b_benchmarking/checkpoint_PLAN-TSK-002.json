@@ -1,0 +1,37 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-04T16:58:41.885071",
+    "checksum": "039a8b563f9905fd",
+    "version": "1.0",
+    "stage": "stage3_5b",
+    "type": "checkpoint"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-002",
+    "methods_completed": [
+      "M1",
+      "M2",
+      "M3"
+    ],
+    "completed_results": {
+      "M1": {
+        "mae": 20480.04,
+        "rmse": 31863.51287969203,
+        "mape": 75.08971823659458,
+        "valid": true
+      },
+      "M2": {
+        "mae": 803.963001006951,
+        "rmse": 842.7792693908943,
+        "mape": 86.10533424290189,
+        "valid": true
+      },
+      "M3": {
+        "mae": 8503.305150000022,
+        "rmse": 13159.900829936445,
+        "mape": 143.40028803940032,
+        "valid": true
+      }
+    }
+  }
+}

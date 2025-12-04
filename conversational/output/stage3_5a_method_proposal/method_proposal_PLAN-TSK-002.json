@@ -1,0 +1,86 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-04T16:52:54.211519",
+    "checksum": "ec27cdd44160970e",
+    "version": "1.0",
+    "stage": "stage3_5a",
+    "type": "method_proposal"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-002",
+    "methods_proposed": [
+      {
+        "method_id": "M1",
+        "name": "Naive Last Value",
+        "category": "baseline",
+        "description": "Predict using the most recent available value (lag_1)",
+        "implementation_code": "def predict_naive_last_value(train_df, test_df, target_col, date_col):\n    import pandas as pd\n    # Use lag_1 as prediction\n    return pd.DataFrame({\"predicted\": test_df[\"lag_1\"]}, index=test_df.index)",
+        "required_libraries": [
+          "pandas"
+        ],
+        "hyperparameters": {},
+        "expected_strengths": [
+          "Simple baseline",
+          "Zero training required"
+        ],
+        "expected_weaknesses": [
+          "Ignores all patterns",
+          "Only uses single previous value"
+        ]
+      },
+      {
+        "method_id": "M2",
+        "name": "Linear Regression with Lags",
+        "category": "statistical",
+        "description": "Linear regression using lag_1, lag_2, lag_3, and rolling_mean_3y",
+        "implementation_code": "def predict_linear_regression(train_df, test_df, target_col, date_col):\n    import pandas as pd\n    from sklearn.linear_model import LinearRegression\n    # Train linear regression\n    X_train = train_df[[\"lag_1\", \"lag_2\", \"lag_3\", \"rolling_mean_3y\"]]\n    y_train = train_df[target_col]\n    model = LinearRegression().fit(X_train, y_train)\n    # Predict\n    X_test = test_df[[\"lag_1\", \"lag_2\", \"lag_3\", \"rolling_mean_3y\"]]\n    return pd.DataFrame({\"predicted\": model.predict(X_test)}, index=test_df.index)",
+        "required_libraries": [
+          "pandas",
+          "sklearn.linear_model"
+        ],
+        "hyperparameters": {},
+        "expected_strengths": [
+          "Captures linear relationships",
+          "Interpretable coefficients"
+        ],
+        "expected_weaknesses": [
+          "Assumes linearity",
+          "May miss complex patterns"
+        ]
+      },
+      {
+        "method_id": "M3",
+        "name": "Random Forest with Lags",
+        "category": "ml",
+        "description": "Random forest using lag_1, lag_2, lag_3, and rolling_mean_3y",
+        "implementation_code": "def predict_random_forest(train_df, test_df, target_col, date_col):\n    import pandas as pd\n    from sklearn.ensemble import RandomForestRegressor\n    # Train random forest\n    X_train = train_df[[\"lag_1\", \"lag_2\", \"lag_3\", \"rolling_mean_3y\"]]\n    y_train = train_df[target_col]\n    model = RandomForestRegressor(n_estimators=100, random_state=42).fit(X_train, y_train)\n    # Predict\n    X_test = test_df[[\"lag_1\", \"lag_2\", \"lag_3\", \"rolling_mean_3y\"]]\n    return pd.DataFrame({\"predicted\": model.predict(X_test)}, index=test_df.index)",
+        "required_libraries": [
+          "pandas",
+          "sklearn.ensemble"
+        ],
+        "hyperparameters": {
+          "n_estimators": 100,
+          "random_state": 42
+        },
+        "expected_strengths": [
+          "Captures non-linear patterns",
+          "Handles feature interactions"
+        ],
+        "expected_weaknesses": [
+          "Less interpretable",
+          "Risk of overfitting"
+        ]
+      }
+    ],
+    "data_split_strategy": {
+      "strategy_type": "temporal_column",
+      "date_column": null,
+      "target_column": "2024 - 25-Value (USD)",
+      "train_period": "Years 2018-2023",
+      "validation_period": "Year 2023-24",
+      "test_period": "Year 2024-25"
+    },
+    "date_column": null,
+    "target_column": "2024 - 25-Value (USD)"
+  }
+}

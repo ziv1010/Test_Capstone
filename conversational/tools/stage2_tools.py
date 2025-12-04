@@ -28,22 +28,33 @@ def list_dataset_summaries() -> str:
     List all available dataset summaries from Stage 1.
 
     Returns list of summary files with basic info about each dataset.
+    IMPORTANT: Note the actual data filename to use in proposals!
     """
     try:
         files = list_summary_files(SUMMARIES_DIR)
         if not files:
             return "No dataset summaries found. Run Stage 1 first."
 
-        result = ["Available Dataset Summaries:"]
+        result = [
+            "Available Dataset Summaries:",
+            "",
+            "Format: summary_file → actual_data_file (rows x cols)"
+        ]
         for f in files:
             try:
                 summary = read_summary_file(f, SUMMARIES_DIR)
                 data = summary.get('data', summary)  # Handle wrapped format
                 n_rows = data.get('n_rows', 'unknown')
                 n_cols = data.get('n_cols', 'unknown')
-                result.append(f"  - {f}: {n_rows} rows, {n_cols} columns")
+                actual_filename = data.get('filename', f.replace('.summary.json', ''))
+                result.append(f"  - {f}")
+                result.append(f"    → Data file: {actual_filename} ({n_rows} rows, {n_cols} cols)")
             except:
                 result.append(f"  - {f}")
+
+        result.append("")
+        result.append("*** IMPORTANT: Use the 'Data file' name (e.g., 'file.csv') in required_datasets ***")
+        result.append("*** NOT the summary filename (e.g., 'file.summary.json') ***")
 
         return "\n".join(result)
 
@@ -66,10 +77,16 @@ def read_dataset_summary(filename: str) -> str:
         summary = read_summary_file(filename, SUMMARIES_DIR)
         data = summary.get('data', summary)  # Handle wrapped format
 
+        # Get the actual data filename (not summary filename)
+        actual_filename = data.get('filename', 'unknown')
+
         # Format for readability
         result = [
             f"=== Summary: {filename} ===",
-            f"Dataset: {data.get('filename', 'unknown')}",
+            f"",
+            f"*** IMPORTANT: Use this filename in required_datasets: {actual_filename} ***",
+            f"",
+            f"Dataset: {actual_filename}",
             f"Shape: {data.get('n_rows', '?')} rows x {data.get('n_cols', '?')} columns",
             "",
             "Columns:",
@@ -80,12 +97,12 @@ def read_dataset_summary(filename: str) -> str:
             ltype = col.get('logical_type', 'unknown')
             nulls = col.get('null_fraction', 0)
             result.append(f"  - {name}: {ltype} (nulls: {nulls:.1%})")
-            
+
             # Add semantic info for categorical columns (helps model understand values)
             if col.get('value_interpretation'):
                 result.append(f"    → {col['value_interpretation']}")
             elif col.get('unique_values') and len(col['unique_values']) <= 10:
-                result.append(f"    → Values: {', '.join(col['unique_values'])}")
+                result.append(f"    → Values: {', '.join(str(v) for v in col['unique_values'])}")
 
         if data.get('candidate_keys'):
             result.append(f"\nCandidate Keys: {data.get('candidate_keys')}")
@@ -97,7 +114,7 @@ def read_dataset_summary(filename: str) -> str:
             result.append("Has datetime column: Yes")
 
         result.append("")
-        result.append("Full JSON available in summary file.")
+        result.append(f"Remember: Use '{actual_filename}' (not '{filename}') in your proposals!")
 
         return "\n".join(result)
 
@@ -108,41 +125,69 @@ def read_dataset_summary(filename: str) -> str:
 
 
 @tool
-def explore_data_relationships(summary_files: str) -> str:
+def explore_data_relationships(summary_files: str = "") -> str:
     """
-    Explore potential relationships between multiple datasets.
+    Explore potential relationships between datasets for multi-dataset tasks.
+
+    IMPORTANT: Call this to find join keys and create multi-dataset proposals!
 
     Args:
-        summary_files: Comma-separated list of summary filenames
+        summary_files: Comma-separated list of summary filenames.
+                       If empty, automatically uses ALL available summaries.
 
     Returns:
-        Analysis of potential joins and relationships
+        Analysis of potential joins and relationships between datasets
     """
     try:
-        files = [f.strip() for f in summary_files.split(',')]
+        # If no files specified, use all available summaries
+        if not summary_files or summary_files.strip() == "":
+            all_files = list_summary_files(SUMMARIES_DIR)
+            if not all_files:
+                return "No summary files found. Run Stage 1 first."
+            files = all_files
+        else:
+            files = [f.strip() for f in summary_files.split(',')]
+
         summaries = {}
+        # Map summary filename to actual data filename
+        filename_map = {}
 
         for f in files:
             try:
                 summary = read_summary_file(f, SUMMARIES_DIR)
-                summaries[f] = summary.get('data', summary)
+                data = summary.get('data', summary)
+                summaries[f] = data
+                # Store the actual data filename (CSV, not summary.json)
+                filename_map[f] = data.get('filename', f.replace('.summary.json', ''))
             except:
                 return f"Could not read: {f}"
 
         if len(summaries) < 2:
             return "Need at least 2 datasets to explore relationships."
 
-        result = ["=== Data Relationship Analysis ===\n"]
+        result = [
+            "=== Data Relationship Analysis ===",
+            "",
+            "*** USE THESE FILENAMES IN YOUR PROPOSALS (not .summary.json files): ***"
+        ]
+
+        # Show filename mapping
+        for summary_file, actual_file in filename_map.items():
+            result.append(f"  {summary_file} → {actual_file}")
+
+        result.append("")
 
         # Find common column names
         all_columns = {}
         for fname, data in summaries.items():
+            actual_file = filename_map[fname]
             for col in data.get('columns', []):
                 col_name = col.get('name', '').lower()
                 if col_name not in all_columns:
                     all_columns[col_name] = []
                 all_columns[col_name].append({
-                    'file': fname,
+                    'summary_file': fname,
+                    'actual_file': actual_file,
                     'original_name': col.get('name'),
                     'type': col.get('logical_type'),
                     'unique_fraction': col.get('unique_fraction', 0)
@@ -153,31 +198,55 @@ def explore_data_relationships(summary_files: str) -> str:
         join_candidates = []
         for col_name, occurrences in all_columns.items():
             if len(occurrences) > 1:
-                files_with_col = [o['file'] for o in occurrences]
+                files_with_col = [o['actual_file'] for o in occurrences]
                 types = [o['type'] for o in occurrences]
                 result.append(f"  - '{col_name}' found in: {files_with_col}")
                 result.append(f"    Types: {types}")
 
-                # Good join key if high uniqueness in at least one dataset
+                # Good join key if types match or both categorical/numeric
                 max_unique = max(o['unique_fraction'] for o in occurrences)
-                if max_unique > 0.5:
-                    join_candidates.append(col_name)
+                if max_unique > 0.1:  # Lower threshold to catch more join candidates
+                    join_candidates.append({
+                        'column': col_name,
+                        'files': files_with_col,
+                        'uniqueness': max_unique
+                    })
 
         if join_candidates:
-            result.append(f"\nBest join candidates (high uniqueness): {join_candidates}")
+            result.append(f"\nBest join candidates: {[jc['column'] for jc in join_candidates]}")
         else:
-            result.append("\nNo strong join candidates found.")
+            result.append("\nNo obvious join candidates, but consider joining on similar categorical columns.")
 
-        # Suggest relationships
-        result.append("\n--- Suggested Relationships ---")
+        # Suggest specific multi-dataset proposals
+        result.append("\n" + "=" * 60)
+        result.append("SUGGESTED MULTI-DATASET TASK IDEAS:")
+        result.append("=" * 60)
+
         for i, (f1, d1) in enumerate(summaries.items()):
             for f2, d2 in list(summaries.items())[i+1:]:
+                actual_f1 = filename_map[f1]
+                actual_f2 = filename_map[f2]
                 cols1 = {c['name'].lower(): c for c in d1.get('columns', [])}
                 cols2 = {c['name'].lower(): c for c in d2.get('columns', [])}
                 common = set(cols1.keys()) & set(cols2.keys())
+
+                result.append(f"\n{actual_f1} + {actual_f2}:")
                 if common:
-                    result.append(f"\n{f1} <-> {f2}:")
-                    result.append(f"  Common columns: {list(common)}")
+                    result.append(f"  Join on: {list(common)}")
+                    # Find numeric columns that could be targets
+                    targets1 = [c['name'] for c in d1.get('columns', [])
+                               if c.get('logical_type') in ['numeric', 'integer', 'float']]
+                    targets2 = [c['name'] for c in d2.get('columns', [])
+                               if c.get('logical_type') in ['numeric', 'integer', 'float']]
+                    if targets1 or targets2:
+                        result.append(f"  Potential targets: {targets1[:3] + targets2[:3]}")
+                    result.append(f"  Example proposal: Join {actual_f1} with {actual_f2} on {list(common)[0] if common else 'similar columns'}")
+                else:
+                    result.append("  No common columns - consider if semantic relationship exists")
+
+        result.append("\n" + "=" * 60)
+        result.append("REMEMBER: At least 2 of your 5 proposals MUST use multiple datasets!")
+        result.append("=" * 60)
 
         return "\n".join(result)
 

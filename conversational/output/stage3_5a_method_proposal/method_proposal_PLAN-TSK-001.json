@@ -1,0 +1,88 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-05T03:53:49.896765",
+    "checksum": "623b541b95368714",
+    "version": "1.0",
+    "stage": "stage3_5a",
+    "type": "method_proposal"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-001",
+    "methods_proposed": [
+      {
+        "method_id": "M1",
+        "name": "Naive Forecast",
+        "category": "baseline",
+        "description": "Uses the most recent year's value as the forecast",
+        "implementation_code": "def predict_naive(train_df, test_df, target_col, **params):\n    import pandas as pd\n    # Use the last available year's value as prediction\n    predictions = test_df['2023 - 24-Quantity'].copy()\n    return pd.DataFrame({'predicted': predictions}, index=test_df.index)",
+        "required_libraries": [
+          "pandas"
+        ],
+        "hyperparameters": {},
+        "expected_strengths": [
+          "Simple and fast",
+          "Serves as a strong baseline"
+        ],
+        "expected_weaknesses": [
+          "Ignores all historical patterns"
+        ]
+      },
+      {
+        "method_id": "M2",
+        "name": "Holt's Linear Trend",
+        "category": "statistical/traditional",
+        "description": "Exponential smoothing with trend component",
+        "implementation_code": "def predict_holt(train_df, test_df, target_col, **params):\n    from statsmodels.tsa.holtwinters import Holt\n    import pandas as pd\n    # Fit Holt's model to the target column\n    model = Holt(train_df[target_col]).fit()\n    # Forecast for the same number of periods as test data\n    forecast = model.forecast(len(test_df))\n    return pd.DataFrame({'predicted': forecast}, index=test_df.index)",
+        "required_libraries": [
+          "pandas",
+          "statsmodels.tsa.holtwinters"
+        ],
+        "hyperparameters": {
+          "smoothing_level": 0.2,
+          "smoothing_trend": 0.1
+        },
+        "expected_strengths": [
+          "Captures linear trends",
+          "Interpretable parameters"
+        ],
+        "expected_weaknesses": [
+          "Assumes constant trend",
+          "No seasonality handling"
+        ]
+      },
+      {
+        "method_id": "M3",
+        "name": "Random Forest with Lags",
+        "category": "ml",
+        "description": "Tree-based model using lag features and rolling averages",
+        "implementation_code": "def predict_rf_lags(train_df, test_df, target_col, **params):\n    from sklearn.ensemble import RandomForestRegressor\n    import pandas as pd\n    # Define features to use\n    feature_cols = ['lag_1yr', 'lag_2yr', 'rolling_avg_2yr']\n    # Train model\n    model = RandomForestRegressor(n_estimators=100, random_state=42)\n    model.fit(train_df[feature_cols], train_df[target_col])\n    # Predict\n    predictions = model.predict(test_df[feature_cols])\n    return pd.DataFrame({'predicted': predictions}, index=test_df.index)",
+        "required_libraries": [
+          "pandas",
+          "sklearn.ensemble"
+        ],
+        "hyperparameters": {
+          "n_estimators": 100,
+          "random_state": 42
+        },
+        "expected_strengths": [
+          "Captures non-linear patterns",
+          "Handles feature interactions"
+        ],
+        "expected_weaknesses": [
+          "Less interpretable",
+          "Requires feature engineering"
+        ]
+      }
+    ],
+    "data_split_strategy": {
+      "strategy_type": "temporal_column",
+      "date_column": null,
+      "target_column": "2024 - 25-Quantity",
+      "train_period": "Years 2018-2022",
+      "validation_period": "Year 2023",
+      "test_period": "Year 2024"
+    },
+    "date_column": null,
+    "target_column": "2024 - 25-Quantity"
+  }
+}

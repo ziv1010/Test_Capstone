@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-05T03:51:52.990996",
+    "checksum": "e4f265477a629eb3",
+    "version": "1.0",
+    "stage": "stage3b",
+    "type": "prepared_data_metadata"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-001",
+    "prepared_file_path": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage3b_data_prep/prepared_PLAN-TSK-001.parquet",
+    "original_row_count": 6,
+    "final_row_count": 6,
+    "columns_created": [
+      "Description",
+      "2018 - 19-Quantity",
+      "2019 - 20-Quantity",
+      "2020 - 21-Quantity",
+      "2021 - 22-Quantity",
+      "2022 - 23-Quantity",
+      "2023 - 24-Quantity",
+      "2024 - 25-Quantity",
+      "lag_1yr",
+      "lag_2yr",
+      "rolling_avg_2yr"
+    ],
+    "transformations_applied": [
+      "impute_median",
+      "create_lag_1yr",
+      "create_lag_2yr",
+      "create_rolling_avg_2yr"
+    ],
+    "data_quality_report": {
+      "total_rows": 6,
+      "total_columns": 11,
+      "null_counts": {},
+      "duplicate_rows": 0
+    },
+    "has_no_nulls": true,
+    "ready_for_modeling": true,
+    "quality_notes": "Zero null values in final dataset (shape: 6x11)"
+  }
+}

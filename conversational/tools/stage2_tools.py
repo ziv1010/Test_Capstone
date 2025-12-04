@@ -80,6 +80,12 @@ def read_dataset_summary(filename: str) -> str:
             ltype = col.get('logical_type', 'unknown')
             nulls = col.get('null_fraction', 0)
             result.append(f"  - {name}: {ltype} (nulls: {nulls:.1%})")
+            
+            # Add semantic info for categorical columns (helps model understand values)
+            if col.get('value_interpretation'):
+                result.append(f"    → {col['value_interpretation']}")
+            elif col.get('unique_values') and len(col['unique_values']) <= 10:
+                result.append(f"    → Values: {', '.join(col['unique_values'])}")
 
         if data.get('candidate_keys'):
             result.append(f"\nCandidate Keys: {data.get('candidate_keys')}")

@@ -78,6 +78,12 @@ class ColumnSummary(BaseModel):
     min_date: Optional[str] = None
     max_date: Optional[str] = None
     date_frequency: Optional[str] = None
+    
+    # Semantic analysis for categorical columns
+    # These help the model understand what the column values mean
+    semantic_type: Optional[str] = Field(default=None, description="Inferred meaning: season, region, category, etc.")
+    unique_values: List[str] = Field(default_factory=list, description="All unique values if categorical and n_unique <= 20")
+    value_interpretation: Optional[str] = Field(default=None, description="Natural language explanation of what values represent")
 
 
 class DatasetSummary(BaseModel):

@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-04T22:51:24.793189",
-    "checksum": "9bf9ea61f9b9e221",
+    "timestamp": "2025-12-05T03:41:41.892053",
+    "checksum": "d34aadd823f2292c",
     "version": "1.0",
     "stage": "stage1",
     "type": "dataset_summary"
@@ -32,7 +32,30 @@
         "std_value": null,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": "crop",
+        "unique_values": [
+          "Bajra",
+          "Barley",
+          "Cereals",
+          "Gram",
+          "Jowar",
+          "Lentil",
+          "Maize",
+          "Moong",
+          "Nutri/Coarse Cereals",
+          "Other Pulses",
+          "Ragi",
+          "Rice",
+          "Shree Anna /Nutri Cereals",
+          "Small Millets",
+          "Total Food Grains",
+          "Total Pulses",
+          "Tur",
+          "Urad",
+          "Wheat"
+        ],
+        "value_interpretation": "Categorical column with 19 distinct values. Sample: Rice, Wheat, Maize, Barley, Jowar..."
       },
       {
         "name": "Season",
@@ -54,7 +77,15 @@
         "std_value": null,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": "season",
+        "unique_values": [
+          "Kharif",
+          "Rabi",
+          "Summer",
+          "Total"
+        ],
+        "value_interpretation": "This column represents 'season' with 4 distinct values: Kharif, Rabi, Summer, Total. When analyzing by season, consider whether any values represent aggregates or summary rows (like 'Total', 'All', 'Overall') versus individual season values."
       },
       {
         "name": "Area-2020-21",
@@ -76,7 +107,10 @@
         "std_value": 269.2423415951753,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2021-22",
@@ -98,7 +132,10 @@
         "std_value": 268.7240715573388,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2022-23",
@@ -120,7 +157,10 @@
         "std_value": 253.17384052010698,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2023-24",
@@ -142,7 +182,10 @@
         "std_value": 254.04508331044124,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2024-25",
@@ -164,7 +207,10 @@
         "std_value": 265.0698829433775,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Production-2020-21",
@@ -186,7 +232,10 @@
         "std_value": 712.9357619307619,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Production-2021-22",
@@ -208,7 +257,10 @@
         "std_value": 723.2120540585792,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Production-2022-23",
@@ -230,7 +282,10 @@
         "std_value": 690.9928002261519,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Production-2023-24",
@@ -252,7 +307,10 @@
         "std_value": 699.7155441609281,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Production-2024-25",
@@ -274,7 +332,10 @@
         "std_value": 745.0216713828239,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Yield-2020-21",
@@ -296,7 +357,10 @@
         "std_value": 1049.9034957271722,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Yield-2021-22",
@@ -318,7 +382,10 @@
         "std_value": 1114.7364110660703,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Yield-2022-23",
@@ -340,7 +407,10 @@
         "std_value": 1229.5331340324326,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Yield-2023-24",
@@ -362,7 +432,10 @@
         "std_value": 1191.9810357333804,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Yield-2024-25",
@@ -384,12 +457,15 @@
         "std_value": 1156.6410968127311,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       }
     ],
     "candidate_keys": [],
     "file_size_mb": 0.008678436279296875,
-    "created_at": "2025-12-04 22:51:24.793077",
+    "created_at": "2025-12-05 03:41:41.891938",
     "has_datetime_column": false,
     "has_target_candidates": [
       "Area-2020-21",

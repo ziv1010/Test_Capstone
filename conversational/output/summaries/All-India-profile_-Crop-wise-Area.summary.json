@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-04T22:51:24.801165",
-    "checksum": "d139c0d47e7351c2",
+    "timestamp": "2025-12-05T03:41:41.900865",
+    "checksum": "282322e0f266fc6d",
     "version": "1.0",
     "stage": "stage1",
     "type": "dataset_summary"
@@ -32,7 +32,10 @@
         "std_value": null,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": "crop",
+        "unique_values": [],
+        "value_interpretation": "Categorical column with 37 distinct values. Sample: Rice, Wheat, Maize, Barley, Jowar..."
       },
       {
         "name": "Season",
@@ -54,7 +57,15 @@
         "std_value": null,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": "season",
+        "unique_values": [
+          "Kharif",
+          "Rabi",
+          "Summer",
+          "Total"
+        ],
+        "value_interpretation": "This column represents 'season' with 4 distinct values: Kharif, Rabi, Summer, Total. When analyzing by season, consider whether any values represent aggregates or summary rows (like 'Total', 'All', 'Overall') versus individual season values."
       },
       {
         "name": "Area-2015-16",
@@ -76,7 +87,10 @@
         "std_value": 211.5539771113202,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2016-17",
@@ -98,7 +112,10 @@
         "std_value": 218.82327250371512,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2017-18",
@@ -120,7 +137,10 @@
         "std_value": 215.34114577327742,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2018-19",
@@ -142,7 +162,10 @@
         "std_value": 211.66221966976408,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2019-20",
@@ -164,7 +187,10 @@
         "std_value": 215.98699503243387,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2020-21",
@@ -186,7 +212,10 @@
         "std_value": 220.86779017144013,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2021-22",
@@ -208,7 +237,10 @@
         "std_value": 214.4512490853662,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2022-23",
@@ -230,7 +262,10 @@
         "std_value": 202.911207124053,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2023-24",
@@ -252,7 +287,10 @@
         "std_value": 203.61155215210871,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Area-2024-25",
@@ -274,12 +312,15 @@
         "std_value": 217.37349110106106,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       }
     ],
     "candidate_keys": [],
     "file_size_mb": 0.009455680847167969,
-    "created_at": "2025-12-04 22:51:24.801082",
+    "created_at": "2025-12-05 03:41:41.900774",
     "has_datetime_column": false,
     "has_target_candidates": [
       "Area-2015-16",

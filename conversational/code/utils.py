@@ -159,6 +159,82 @@ def get_column_statistics(series: pd.Series, logical_type: LogicalDataType) -> D
     return stats
 
 
+def analyze_column_semantics(col_name: str, series: pd.Series, logical_type: LogicalDataType) -> Dict[str, Any]:
+    """
+    Analyze semantic meaning of a column based on its name and values.
+    
+    Provides contextual understanding without hardcoding specific filter values.
+    The LLM should use this context to make intelligent decisions.
+    
+    Returns dict with:
+    - semantic_type: Inferred category (season, year, region, crop, metric, etc.)
+    - unique_values: All unique values (for low-cardinality columns)
+    - value_interpretation: Natural language explanation of what values represent
+    """
+    result = {
+        'semantic_type': None,
+        'unique_values': [],
+        'value_interpretation': None
+    }
+    
+    if series.empty or series.isna().all():
+        return result
+    
+    non_null = series.dropna()
+    col_lower = col_name.lower()
+    
+    # Only analyze categorical columns with reasonable cardinality
+    if logical_type != LogicalDataType.CATEGORICAL:
+        return result
+    
+    n_unique = non_null.nunique()
+    
+    # Store unique values for low-cardinality columns (helps model understand the data)
+    if n_unique <= 20:
+        result['unique_values'] = sorted([str(v) for v in non_null.unique()])
+    
+    # Infer semantic type from column name patterns
+    semantic_patterns = {
+        'season': ['season', 'szn'],
+        'crop': ['crop', 'plant', 'grain', 'cereal', 'produce'],
+        'region': ['region', 'state', 'district', 'area', 'zone', 'country', 'location'],
+        'year': ['year', 'yr', 'period', 'fiscal'],
+        'month': ['month', 'mon'],
+        'category': ['category', 'type', 'class', 'group', 'kind'],
+        'status': ['status', 'state', 'condition'],
+        'variety': ['variety', 'variant', 'type', 'grade'],
+    }
+    
+    for sem_type, patterns in semantic_patterns.items():
+        if any(p in col_lower for p in patterns):
+            result['semantic_type'] = sem_type
+            break
+    
+    # Generate value interpretation based on the data
+    if n_unique <= 10 and result['unique_values']:
+        values_str = ', '.join(result['unique_values'][:10])
+        
+        # Create interpretation based on semantic type
+        if result['semantic_type']:
+            result['value_interpretation'] = (
+                f"This column represents '{result['semantic_type']}' with {n_unique} distinct values: {values_str}. "
+                f"When analyzing by {result['semantic_type']}, consider whether any values represent aggregates "
+                f"or summary rows (like 'Total', 'All', 'Overall') versus individual {result['semantic_type']} values."
+            )
+        else:
+            result['value_interpretation'] = (
+                f"Categorical column with {n_unique} distinct values: {values_str}. "
+                f"Consider whether any values represent aggregates/summaries versus individual categories."
+            )
+    elif n_unique > 10:
+        sample_values = ', '.join([str(v) for v in non_null.unique()[:5]])
+        result['value_interpretation'] = (
+            f"Categorical column with {n_unique} distinct values. Sample: {sample_values}..."
+        )
+    
+    return result
+
+
 # ============================================================================
 # DATA PROFILING
 # ============================================================================
@@ -208,6 +284,9 @@ def profile_csv(filepath: Union[str, Path], sample_rows: int = 5000) -> DatasetS
 
         # Get type-specific statistics
         stats = get_column_statistics(series, logical_type)
+        
+        # Get semantic analysis for categorical columns
+        semantics = analyze_column_semantics(col_name, series, logical_type)
 
         col_summary = ColumnSummary(
             name=col_name,
@@ -217,7 +296,8 @@ def profile_csv(filepath: Union[str, Path], sample_rows: int = 5000) -> DatasetS
             unique_fraction=unique_fraction,
             n_unique=n_unique,
             examples=examples,
-            **stats
+            **stats,
+            **semantics
         )
         columns.append(col_summary)
 

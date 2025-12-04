@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-04T22:51:24.811723",
-    "checksum": "3fef9cd4ae3ebe93",
+    "timestamp": "2025-12-05T03:41:41.912698",
+    "checksum": "b45bb22901e4fa24",
     "version": "1.0",
     "stage": "stage1",
     "type": "dataset_summary"
@@ -32,7 +32,10 @@
         "std_value": 1123.654751247019,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "Description",
@@ -54,7 +57,19 @@
         "std_value": null,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [
+          "BASMATI RICE",
+          "BROKEN RICE",
+          "HUSKED (BROWN) RICE",
+          "OTHR RICE IN HUSK",
+          "RICE EXCPTG PARBOILED (EXCL BASMATI RICE)",
+          "RICE IN HUSK OF SEED QLTY",
+          "RICE PARBOILED",
+          "Total"
+        ],
+        "value_interpretation": "Categorical column with 8 distinct values: BASMATI RICE, BROKEN RICE, HUSKED (BROWN) RICE, OTHR RICE IN HUSK, RICE EXCPTG PARBOILED (EXCL BASMATI RICE), RICE IN HUSK OF SEED QLTY, RICE PARBOILED, Total. Consider whether any values represent aggregates/summaries versus individual categories."
       },
       {
         "name": "2018 - 19-Quantity",
@@ -76,7 +91,10 @@
         "std_value": 218.97981046314794,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2018 - 19-Value (INR)",
@@ -98,7 +116,10 @@
         "std_value": 6026569.231051149,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2018 - 19-Value (USD)",
@@ -120,7 +141,10 @@
         "std_value": 89052.74804054537,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2019 - 20-Quantity",
@@ -142,7 +166,10 @@
         "std_value": 5.318520650026839,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2019 - 20-Value (INR)",
@@ -164,7 +191,10 @@
         "std_value": 387708.3800227491,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2019 - 20-Value (USD)",
@@ -186,7 +216,10 @@
         "std_value": 5469.358211694364,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2020 - 21-Quantity",
@@ -208,7 +241,10 @@
         "std_value": 386.8616202579049,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2020 - 21-Value (INR)",
@@ -230,7 +266,10 @@
         "std_value": 10709352.470150542,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2020 - 21-Value (USD)",
@@ -252,7 +291,10 @@
         "std_value": 146988.15455903698,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2021 - 22-Quantity",
@@ -274,7 +316,10 @@
         "std_value": 712.6234039887407,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2021 - 22-Value (INR)",
@@ -296,7 +341,10 @@
         "std_value": 19898514.51378555,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2021 - 22-Value (USD)",
@@ -318,7 +366,10 @@
         "std_value": 268168.8458705458,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2022 - 23-Quantity",
@@ -340,7 +391,10 @@
         "std_value": 394.3396929551982,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2022 - 23-Value (INR)",
@@ -362,7 +416,10 @@
         "std_value": 11813722.914483586,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2022 - 23-Value (USD)",
@@ -384,7 +441,10 @@
         "std_value": 145187.880981443,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2023 - 24-Quantity",
@@ -404,7 +464,10 @@
         "std_value": 3.1981088161599502,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2023 - 24-Value (INR)",
@@ -424,7 +487,10 @@
         "std_value": 379360.2231911162,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2023 - 24-Value (USD)",
@@ -444,7 +510,10 @@
         "std_value": 4587.918968730085,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2024 - 25-Quantity",
@@ -466,7 +535,10 @@
         "std_value": 396.5222935809116,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2024 - 25-Value (INR)",
@@ -488,7 +560,10 @@
         "std_value": 15048565.321248839,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       },
       {
         "name": "2024 - 25-Value (USD)",
@@ -510,7 +585,10 @@
         "std_value": 174452.3303460809,
         "min_date": null,
         "max_date": null,
-        "date_frequency": null
+        "date_frequency": null,
+        "semantic_type": null,
+        "unique_values": [],
+        "value_interpretation": null
       }
     ],
     "candidate_keys": [
@@ -524,7 +602,7 @@
       "2021 - 22-Value (USD)"
     ],
     "file_size_mb": 0.00213623046875,
-    "created_at": "2025-12-04 22:51:24.811625",
+    "created_at": "2025-12-05 03:41:41.912589",
     "has_datetime_column": false,
     "has_target_candidates": [
       "2018 - 19-Quantity",

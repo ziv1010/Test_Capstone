@@ -1,10 +1,11 @@
 {
   "_meta": {
-    "timestamp": "2025-12-05T04:04:55.919777",
-    "checksum": "979eb7510e027814",
+    "timestamp": "2025-12-05T04:26:02.602405",
+    "checksum": "45b73f2ea31aea3e",
     "version": "1.0",
     "stage": "stage4",
-    "type": "execution_result"
+    "type": "execution_result",
+    "method": "M3"
   },
   "data": {
     "plan_id": "PLAN-TSK-001",
@@ -13,15 +14,15 @@
       "predictions": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage4_out/results_PLAN-TSK-001.parquet"
     },
     "metrics": {
-      "mae": 740.3883,
-      "rmse": 741.014,
-      "mape": 94.78,
-      "r2": -591.4079
+      "mae": 740.3882999999998,
+      "rmse": 741.0139896128074,
+      "mape": 94.78422459672537
     },
-    "summary": "Generated predictions for 2 samples",
-    "data_shape": [
-      2,
-      13
-    ]
+    "summary": "Executed Random Forest with Lags (MAE: 740.3883)",
+    "errors": [],
+    "detailed_log": null,
+    "data_shape": null,
+    "execution_time_seconds": null,
+    "created_at": "2025-12-05 04:26:02.602288"
   }
 }

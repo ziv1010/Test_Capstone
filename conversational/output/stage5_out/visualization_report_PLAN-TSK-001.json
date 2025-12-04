@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-05T04:06:44.521842",
-    "checksum": "c49a4c3a01fc590f",
+    "timestamp": "2025-12-05T04:27:17.247030",
+    "checksum": "5f69d0d1d53f765d",
     "version": "1.0",
     "stage": "stage5",
     "type": "visualization_report"
@@ -13,7 +13,7 @@
         "filepath": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage5_out/actual_vs_predicted.png",
         "plot_type": "scatter",
         "title": "Actual vs Predicted Values",
-        "description": "Comparison of actual and predicted rice export quantities with ideal prediction line",
+        "description": "Comparison of actual and predicted rice export quantities with perfect prediction line",
         "columns_used": [
           "actual",
           "predicted"
@@ -24,7 +24,7 @@
         "filepath": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage5_out/residuals_histogram.png",
         "plot_type": "histogram",
         "title": "Residual Distribution",
-        "description": "Histogram showing distribution of prediction errors (residuals)",
+        "description": "Histogram showing distribution of prediction errors (actual - predicted)",
         "columns_used": [
           "residuals"
         ],
@@ -32,11 +32,12 @@
       }
     ],
     "insights": [
-      "Model has extremely high MAPE (94.78%) and negative R2 (-591.41)",
-      "Only 2 samples in dataset leading to unreliable predictions",
-      "Residuals show consistent underprediction with large errors"
+      "Model has extremely high MAPE (94.78%) indicating poor accuracy",
+      "Predictions consistently under-forecast actual values (positive bias)",
+      "Only 2 prediction samples available limits reliability assessment",
+      "Residuals show no clear pattern but high magnitude errors"
     ],
-    "summary": "The model demonstrates severe prediction errors with MAPE exceeding 94% and negative R2 score. With only 2 samples in the dataset, the model lacks sufficient data to produce reliable forecasts for rice exports to Bangladesh.",
-    "task_answer": "The model cannot reliably forecast rice exports to Bangladesh due to extremely high prediction errors (94.78% MAPE) and insufficient data (only 2 samples). The negative R2 score indicates predictions are worse than a horizontal line baseline."
+    "summary": "The Random Forest model with lags produces unreliable forecasts for Bangladesh rice exports with over 94% average error. The model systematically under-predicts and requires significant improvement before practical use.",
+    "task_answer": "The Random Forest model with lags produces unreliable forecasts for Bangladesh rice exports with over 94% average error. The model systematically under-predicts and requires significant improvement before practical use."
   }
 }

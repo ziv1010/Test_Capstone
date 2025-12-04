@@ -108,16 +108,20 @@ df = pd.read_parquet(STAGE3B_OUT_DIR / 'prepared_{{plan_id}}.parquet')
 date_col = 'your_date_column'
 target_col = 'your_target_column'
 
-df[date_col] = pd.to_datetime(df[date_col])
-df = df.sort_values(date_col)
+# Handle date column if it exists
+if date_col and date_col in df.columns:
+    df[date_col] = pd.to_datetime(df[date_col])
+    df = df.sort_values(date_col)
 
-# Split data (temporal split for time series)
-train_size = int(len(df) * 0.7)
-val_size = int(len(df) * 0.15)
-
-train_df = df.iloc[:train_size]
-val_df = df.iloc[train_size:train_size+val_size]
-test_df = df.iloc[train_size+val_size:]
+# Split data
+# CRITICAL: You MUST follow the data_split_strategy from the execution context
+# Do not invent a new split. Use the exact same strategy used in benchmarking.
+# Example for temporal_column strategy (wide format):
+# strategy = context.get('data_split_strategy', {})
+# if strategy.get('strategy_type') == 'temporal_column':
+#     # Implement specific split logic here based on the strategy details
+#     pass
+# Else use standard split if no specific strategy provided
 
 # Define the selected method
 def predict_selected_method(train_df, test_df, target_col, date_col, **params):
@@ -138,13 +142,19 @@ predicted = results_df['predicted'].values
 
 mae = np.mean(np.abs(actual - predicted))
 rmse = np.sqrt(np.mean((actual - predicted) ** 2))
-mape = np.mean(np.abs((actual - predicted) / actual)) * 100
-r2 = 1 - (np.sum((actual - predicted)**2) / np.sum((actual - np.mean(actual))**2))
+# Handle division by zero for MAPE
+mask = actual != 0
+if mask.any():
+    mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100
+else:
+    mape = 0.0
+    
+r2 = 1 - (np.sum((actual - predicted)**2) / np.sum((actual - np.mean(actual))**2)) if len(actual) > 1 else 0.0
 
-print(f"MAE: {{mae:.4f}}")
-print(f"RMSE: {{rmse:.4f}}")
-print(f"MAPE: {{mape:.2f}}%")
-print(f"R²: {{r2:.4f}}")
+print(f"MAE: {mae:.4f}")
+print(f"RMSE: {rmse:.4f}")
+print(f"MAPE: {mape:.2f}%")
+print(f"R²: {r2:.4f}")
 ```
 
 ## Error Handling

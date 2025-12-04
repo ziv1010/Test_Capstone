@@ -27,13 +27,15 @@ def load_execution_context(plan_id: str = None) -> str:
     """
     Load all necessary context for execution.
 
-    Loads: execution plan, prepared data info, and selected method.
+    Loads: execution plan, prepared data info, selected method, and data split strategy.
+
+    CRITICAL: This tool returns all information needed to replicate Stage 3.5B results.
 
     Args:
         plan_id: Plan ID. If not provided, loads most recent.
 
     Returns:
-        Summary of execution context
+        Comprehensive execution context including split strategy and benchmark metrics
     """
     try:
         # Find plan
@@ -51,7 +53,8 @@ def load_execution_context(plan_id: str = None) -> str:
         result = [
             f"=== Execution Context: {plan_id} ===",
             f"Goal: {plan.get('goal')}",
-            f"Target: {plan.get('target_column')}",
+            f"Target Column: {plan.get('target_column')}",
+            f"Date Column: {plan.get('date_column', 'N/A')}",
             f"Category: {plan.get('task_category')}",
             "",
         ]
@@ -62,31 +65,77 @@ def load_execution_context(plan_id: str = None) -> str:
             df = pd.read_parquet(prepared_path)
             result.append(f"Prepared Data: {df.shape[0]} rows x {df.shape[1]} columns")
             result.append(f"Columns: {list(df.columns)}")
+            result.append(f"Null counts: {df.isnull().sum().to_dict()}")
         else:
             result.append("Prepared Data: NOT FOUND - will use raw files")
 
-        # Check for selected method
+        # Check for selected method and get ALL critical information
         tester_path = STAGE3_5B_OUT_DIR / f"tester_{plan_id}.json"
         if tester_path.exists():
             tester = DataPassingManager.load_artifact(tester_path)
-            result.append(f"\nSelected Method: {tester.get('selected_method_id')} - {tester.get('selected_method_name')}")
+            result.append("")
+            result.append("=" * 60)
+            result.append("SELECTED METHOD FROM STAGE 3.5B")
+            result.append("=" * 60)
+            result.append(f"Method ID: {tester.get('selected_method_id')}")
+            result.append(f"Method Name: {tester.get('selected_method_name')}")
             result.append(f"Selection Reason: {tester.get('selection_rationale')}")
 
-            # Get implementation code
-            for m in tester.get('methods_tested', []):
-                if m.get('method_id') == tester.get('selected_method_id'):
-                    result.append("\nImplementation available in tester output")
-                    break
+            # Add target and date column info from tester
+            result.append("")
+            result.append("Column Configuration:")
+            result.append(f"  Target Column: {tester.get('target_column', plan.get('target_column'))}")
+            result.append(f"  Date Column: {tester.get('date_column', plan.get('date_column', 'N/A'))}")
+            result.append(f"  Feature Columns: {tester.get('feature_columns', [])}")
+
+            # Add data split strategy (CRITICAL for metric consistency)
+            result.append("")
+            result.append("=" * 60)
+            result.append("DATA SPLIT STRATEGY (MUST USE EXACTLY)")
+            result.append("=" * 60)
+            split_strategy = tester.get('data_split_strategy', {})
+            result.append(json.dumps(split_strategy, indent=2))
+
+            # Add benchmark metrics
+            result.append("")
+            result.append("=" * 60)
+            result.append("BENCHMARK METRICS (Your Stage 4 results should match)")
+            result.append("=" * 60)
+            benchmark_metrics = tester.get('benchmark_metrics', {})
+            if benchmark_metrics:
+                result.append(f"  Expected MAE: {benchmark_metrics.get('mae', 'N/A')}")
+                result.append(f"  Expected RMSE: {benchmark_metrics.get('rmse', 'N/A')}")
+                result.append(f"  Expected MAPE: {benchmark_metrics.get('mape', 'N/A')}")
+            else:
+                # Fallback to method results
+                for m in tester.get('methods_tested', []):
+                    if m.get('method_id') == tester.get('selected_method_id'):
+                        result.append(f"  Expected MAE: {m.get('avg_mae', m.get('mae', 'N/A'))}")
+                        result.append(f"  Expected RMSE: {m.get('avg_rmse', m.get('rmse', 'N/A'))}")
+                        result.append(f"  Expected MAPE: {m.get('avg_mape', m.get('mape', 'N/A'))}")
+                        break
+
+            # Check if winning code is available
+            if tester.get('winning_method_code'):
+                result.append("")
+                result.append("Winning method code: AVAILABLE (use get_selected_method_code to retrieve)")
+            else:
+                result.append("")
+                result.append("WARNING: Winning method code not stored in tester output")
         else:
             result.append("\nSelected Method: NOT FOUND - will use default approach")
 
-        result.append("\n\nPlan JSON:")
+        result.append("")
+        result.append("=" * 60)
+        result.append("FULL PLAN JSON")
+        result.append("=" * 60)
         result.append(json.dumps(plan, indent=2, default=str))
 
         return "\n".join(result)
 
     except Exception as e:
-        return f"Error loading context: {e}"
+        import traceback
+        return f"Error loading context: {e}\n{traceback.format_exc()}"
 
 
 @tool
@@ -142,11 +191,14 @@ def get_selected_method_code(plan_id: str) -> str:
     First tries tester output (Stage 3.5B) which has the verified winning code,
     then falls back to method proposal (Stage 3.5A) if not found.
 
+    CRITICAL: This returns the EXACT data split strategy and benchmark metrics
+    from Stage 3.5B. Stage 4 MUST use the same split to reproduce the metrics.
+
     Args:
         plan_id: Plan ID
 
     Returns:
-        Method details and implementation code
+        Method details, implementation code, and REQUIRED split strategy
     """
     try:
         # ================================================================
@@ -155,23 +207,50 @@ def get_selected_method_code(plan_id: str) -> str:
         tester_path = STAGE3_5B_OUT_DIR / f"tester_{plan_id}.json"
         if tester_path.exists():
             tester = DataPassingManager.load_artifact(tester_path)
-            
+
             # Check if winning method code is stored in tester output
             if tester.get('winning_method_code'):
                 selected_id = tester.get('selected_method_id')
                 selected_name = tester.get('selected_method_name', selected_id)
-                
+
                 result = [
                     f"=== Selected Method: {selected_id} (from Stage 3.5B tester output) ===",
                     f"Name: {selected_name}",
                     f"Target Column: {tester.get('target_column', 'N/A')}",
                     f"Date Column: {tester.get('date_column', 'N/A')}",
+                    f"Feature Columns: {tester.get('feature_columns', [])}",
                     f"Libraries: {tester.get('winning_method_libraries', [])}",
                     "",
-                    "Data Split Strategy:",
+                    "=" * 60,
+                    "CRITICAL: DATA SPLIT STRATEGY (MUST USE EXACTLY)",
+                    "=" * 60,
                     json.dumps(tester.get('data_split_strategy', {}), indent=2),
                     "",
-                    "Implementation Code:",
+                    "=" * 60,
+                    "BENCHMARK METRICS FROM STAGE 3.5B (Your results should match)",
+                    "=" * 60,
+                ]
+
+                # Add benchmark metrics that Stage 4 should replicate
+                benchmark_metrics = tester.get('benchmark_metrics', {})
+                if benchmark_metrics:
+                    result.append(f"  Expected MAE: {benchmark_metrics.get('mae', 'N/A')}")
+                    result.append(f"  Expected RMSE: {benchmark_metrics.get('rmse', 'N/A')}")
+                    result.append(f"  Expected MAPE: {benchmark_metrics.get('mape', 'N/A')}")
+                else:
+                    # Fallback to method results
+                    for method in tester.get('methods_tested', []):
+                        if method.get('method_id') == selected_id:
+                            result.append(f"  Expected MAE: {method.get('avg_mae', method.get('mae', 'N/A'))}")
+                            result.append(f"  Expected RMSE: {method.get('avg_rmse', method.get('rmse', 'N/A'))}")
+                            result.append(f"  Expected MAPE: {method.get('avg_mape', method.get('mape', 'N/A'))}")
+                            break
+
+                result.extend([
+                    "",
+                    "=" * 60,
+                    "IMPLEMENTATION CODE",
+                    "=" * 60,
                     "```python",
                     tester.get('winning_method_code'),
                     "```",
@@ -179,20 +258,18 @@ def get_selected_method_code(plan_id: str) -> str:
                     "Hyperparameters:",
                     json.dumps(tester.get('winning_method_hyperparameters', {}), indent=2),
                     "",
-                    "Benchmark Results:",
-                    f"  Selection Rationale: {tester.get('selection_rationale', 'N/A')}",
-                ]
-                
-                # Add benchmark metrics for the selected method
-                for method in tester.get('methods_tested', []):
-                    if method.get('method_id') == selected_id:
-                        result.append(f"  Avg MAE: {method.get('avg_mae', 'N/A')}")
-                        result.append(f"  Avg RMSE: {method.get('avg_rmse', 'N/A')}")
-                        break
-                
+                    f"Selection Rationale: {tester.get('selection_rationale', 'N/A')}",
+                    "",
+                    "=" * 60,
+                    "IMPORTANT: Use the EXACT same data split strategy above",
+                    "to reproduce the benchmark metrics. If your results differ",
+                    "significantly, check your data splitting code.",
+                    "=" * 60,
+                ])
+
                 logger.info(f"Retrieved winning method {selected_id} from tester output")
                 return "\n".join(result)
-        
+
         # ================================================================
         # PRIORITY 2: Fallback to method proposal (Stage 3.5A)
         # ================================================================
@@ -218,6 +295,9 @@ def get_selected_method_code(plan_id: str) -> str:
                     f"Category: {method.get('category')}",
                     f"Description: {method.get('description')}",
                     f"Libraries: {method.get('required_libraries', [])}",
+                    "",
+                    "Data Split Strategy:",
+                    json.dumps(proposal.get('data_split_strategy', {}), indent=2),
                     "",
                     "Implementation Code:",
                     "```python",

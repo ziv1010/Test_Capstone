@@ -586,7 +586,7 @@ def save_tester_output(output_json: str) -> str:
                 if proposal_path.exists():
                     proposal = DataPassingManager.load_artifact(proposal_path)
                     selected_id = output['selected_method_id']
-                    
+
                     # Find and store winning method's code
                     for method in proposal.get('methods_proposed', []):
                         if method.get('method_id') == selected_id:
@@ -595,15 +595,31 @@ def save_tester_output(output_json: str) -> str:
                             output['winning_method_libraries'] = method.get('required_libraries', [])
                             logger.info(f"Stored winning method code for {selected_id}")
                             break
-                    
+
                     # Also store data split strategy and column info for consistency
                     output['data_split_strategy'] = proposal.get('data_split_strategy', {})
                     output['target_column'] = proposal.get('target_column')
                     output['date_column'] = proposal.get('date_column')
+                    output['feature_columns'] = proposal.get('feature_columns', [])
                 else:
                     logger.warning(f"Method proposal not found at {proposal_path}, cannot store winning code")
             except Exception as e:
                 logger.error(f"Failed to store winning method code: {e}")
+
+        # ============================================================
+        # CRITICAL: Store benchmark metrics from winning method
+        # Stage 4 should replicate these metrics
+        # ============================================================
+        selected_id = output.get('selected_method_id')
+        for method in output.get('methods_tested', []):
+            if method.get('method_id') == selected_id:
+                output['benchmark_metrics'] = {
+                    'mae': method.get('avg_mae', method.get('mae')),
+                    'rmse': method.get('avg_rmse', method.get('rmse')),
+                    'mape': method.get('avg_mape', method.get('mape')),
+                }
+                logger.info(f"Stored benchmark metrics for Stage 4 verification: {output['benchmark_metrics']}")
+                break
 
         # Ensure output directory exists
         STAGE3_5B_OUT_DIR.mkdir(parents=True, exist_ok=True)

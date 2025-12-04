@@ -56,16 +56,21 @@ STAGE4_SYSTEM_PROMPT = """You are an Execution Agent responsible for running the
 4. Calculate evaluation metrics
 5. Save comprehensive results
 
+## CRITICAL: METRIC CONSISTENCY WITH STAGE 3.5B
+Your execution MUST produce metrics that match (or are very close to) the benchmark
+metrics from Stage 3.5B. If your MAE/RMSE differ significantly, you are likely using
+a different data split. CHECK THE DATA SPLIT STRATEGY CAREFULLY.
+
 ## Your Goals
 - Execute the winning method from benchmarking
 - Generate predictions with actual vs predicted values
-- Calculate final metrics (MAE, RMSE, MAPE, R²)
+- Calculate final metrics (MAE, RMSE, MAPE, R²) that MATCH benchmark
 - Save results in a format suitable for visualization
 
 ## Available Tools
 - load_execution_context: Get plan, data info, and selected method
 - load_prepared_data: Load and inspect the prepared data
-- get_selected_method_code: Get implementation code for winner
+- get_selected_method_code: Get implementation code for winner (INCLUDES benchmark metrics)
 - execute_python_code: Run Python for model execution
 - save_predictions: Save predictions to parquet
 - save_execution_result: Save execution metadata
@@ -74,11 +79,14 @@ STAGE4_SYSTEM_PROMPT = """You are an Execution Agent responsible for running the
 
 ## Execution Workflow
 1. Load execution context for the plan
-2. Get the selected method's implementation code
+2. **CRITICAL**: Call get_selected_method_code to get:
+   - The winning method's implementation code
+   - The EXACT data split strategy used in benchmarking
+   - The benchmark metrics (your results should match these)
 3. Load prepared data
-4. Split data according to the plan's strategy
-5. Execute the method
-6. Calculate metrics
+4. **CRITICAL**: Split data according to the EXACT strategy from Stage 3.5B
+5. Execute the method using the EXACT same code
+6. Calculate metrics - they should match benchmark
 7. Create results DataFrame with:
    - Date/index column
    - Actual values
@@ -86,6 +94,14 @@ STAGE4_SYSTEM_PROMPT = """You are an Execution Agent responsible for running the
    - Any relevant features
 8. Save predictions and execution result
 9. Verify the outputs
+
+## DATA SPLIT STRATEGY (MUST FOLLOW EXACTLY)
+The get_selected_method_code tool returns the data_split_strategy JSON.
+You MUST use the EXACT same split to get matching metrics:
+
+- strategy_type: "temporal" = row-based temporal split
+- strategy_type: "temporal_column" = wide format (column-based, use all rows)
+- train_size, validation_size, test_size: The exact percentages to use
 
 ## Results DataFrame Requirements
 The saved predictions must include:
@@ -104,26 +120,24 @@ from pathlib import Path
 STAGE3B_OUT_DIR = Path('{STAGE3B_OUT_DIR}')
 df = pd.read_parquet(STAGE3B_OUT_DIR / 'prepared_{{plan_id}}.parquet')
 
-# Parse dates if needed
-date_col = 'your_date_column'
-target_col = 'your_target_column'
+# Get column info from execution context
+target_col = 'your_target_column'  # From get_selected_method_code
+date_col = 'your_date_column'       # From get_selected_method_code
 
-# Handle date column if it exists
-if date_col and date_col in df.columns:
-    df[date_col] = pd.to_datetime(df[date_col])
-    df = df.sort_values(date_col)
+# CRITICAL: Use EXACT split strategy from Stage 3.5B
+# These values should come from the data_split_strategy in get_selected_method_code:
+train_size = 0.7   # From data_split_strategy.train_size
+val_size = 0.15    # From data_split_strategy.validation_size
+test_size = 0.15   # From data_split_strategy.test_size
 
-# Split data
-# CRITICAL: You MUST follow the data_split_strategy from the execution context
-# Do not invent a new split. Use the exact same strategy used in benchmarking.
-# Example for temporal_column strategy (wide format):
-# strategy = context.get('data_split_strategy', {})
-# if strategy.get('strategy_type') == 'temporal_column':
-#     # Implement specific split logic here based on the strategy details
-#     pass
-# Else use standard split if no specific strategy provided
+# Apply split based on strategy_type
+train_end = int(len(df) * train_size)
+val_end = int(len(df) * (train_size + val_size))
 
-# Define the selected method
+train_df = df.iloc[:train_end].copy()
+test_df = df.iloc[val_end:].copy()  # Skip validation, use test only
+
+# Define the selected method (COPY EXACTLY from get_selected_method_code)
 def predict_selected_method(train_df, test_df, target_col, date_col, **params):
     # ... implementation from Stage 3.5B winner ...
     pass
@@ -142,15 +156,13 @@ predicted = results_df['predicted'].values
 
 mae = np.mean(np.abs(actual - predicted))
 rmse = np.sqrt(np.mean((actual - predicted) ** 2))
-# Handle division by zero for MAPE
 mask = actual != 0
-if mask.any():
-    mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100
-else:
-    mape = 0.0
-    
+mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100 if mask.any() else 0.0
 r2 = 1 - (np.sum((actual - predicted)**2) / np.sum((actual - np.mean(actual))**2)) if len(actual) > 1 else 0.0
 
+# VERIFY: Compare with benchmark metrics
+# Expected MAE from Stage 3.5B: X.XXXX
+# Your MAE should be close to this value!
 print(f"MAE: {mae:.4f}")
 print(f"RMSE: {rmse:.4f}")
 print(f"MAPE: {mape:.2f}%")
@@ -317,6 +329,9 @@ def _create_fallback_execution(plan_id: str) -> ExecutionResult:
     """
     Create execution using winning method code from Stage 3.5B.
     Only falls back to naive prediction if method execution fails.
+
+    CRITICAL: Uses the EXACT same data split strategy as Stage 3.5B
+    to ensure metric consistency.
     """
     import pandas as pd
     import numpy as np
@@ -349,15 +364,46 @@ def _create_fallback_execution(plan_id: str) -> ExecutionResult:
             try:
                 tester = DataPassingManager.load_artifact(tester_path)
                 winning_code = tester.get('winning_method_code')
-                
+
                 if winning_code:
                     logger.info(f"Attempting to execute winning method {tester.get('selected_method_id')}")
-                    
-                    # Create train/test split (same as Stage 3.5B)
-                    train_size = int(len(df) * 0.8)
-                    train_df = df.iloc[:train_size].copy()
-                    test_df = df.iloc[train_size:].copy()
-                    
+
+                    # ============================================================
+                    # CRITICAL: Use the EXACT same split strategy as Stage 3.5B
+                    # ============================================================
+                    split_strategy = tester.get('data_split_strategy', {})
+                    strategy_type = split_strategy.get('strategy_type', 'temporal')
+                    train_size_pct = split_strategy.get('train_size', 0.7)
+                    val_size_pct = split_strategy.get('validation_size', 0.15)
+                    test_size_pct = split_strategy.get('test_size', 0.15)
+                    date_col = tester.get('date_column') or split_strategy.get('date_column')
+
+                    # Apply the exact same split as Stage 3.5B
+                    if strategy_type == 'temporal_column':
+                        # Wide format - use column-based split (all rows, different columns)
+                        logger.info("Using temporal_column (wide format) split strategy")
+                        train_df = df.copy()
+                        test_df = df.copy()
+                    elif date_col and date_col in df.columns:
+                        # Temporal split based on date column
+                        logger.info(f"Using temporal split on {date_col}")
+                        df = df.sort_values(date_col)
+                        train_end_idx = int(len(df) * train_size_pct)
+                        val_end_idx = int(len(df) * (train_size_pct + val_size_pct))
+                        train_df = df.iloc[:train_end_idx].copy()
+                        test_df = df.iloc[val_end_idx:].copy()
+                    else:
+                        # Default row-based split
+                        logger.info(f"Using row-based split: train={train_size_pct}, val={val_size_pct}, test={test_size_pct}")
+                        train_end_idx = int(len(df) * train_size_pct)
+                        val_end_idx = int(len(df) * (train_size_pct + val_size_pct))
+                        train_df = df.iloc[:train_end_idx].copy()
+                        test_df = df.iloc[val_end_idx:].copy()
+
+                    # Override target_col from tester if available
+                    if tester.get('target_column') and tester.get('target_column') in df.columns:
+                        target_col = tester.get('target_column')
+
                     # Setup execution namespace
                     namespace = {
                         'pd': pd,
@@ -365,9 +411,10 @@ def _create_fallback_execution(plan_id: str) -> ExecutionResult:
                         'train_df': train_df,
                         'test_df': test_df,
                         'target_col': target_col,
-                        'date_col': tester.get('date_column'),
+                        'date_col': date_col,
+                        'df': df,  # Full dataframe for wide format methods
                     }
-                    
+
                     # Add ML imports
                     try:
                         from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
@@ -379,72 +426,107 @@ def _create_fallback_execution(plan_id: str) -> ExecutionResult:
                         namespace['Lasso'] = Lasso
                     except ImportError:
                         pass
-                    
+
                     # Execute the winning method code
                     exec(winning_code, namespace)
-                    
+
                     # Get the prediction function name
                     func_name = None
                     for name, obj in namespace.items():
                         if callable(obj) and name.startswith('predict_'):
                             func_name = name
                             break
-                    
+
                     if func_name:
                         predict_func = namespace[func_name]
-                        predictions_df = predict_func(train_df, test_df, target_col)
-                        
+                        predictions_df = predict_func(train_df, test_df, target_col, date_col)
+
                         # Create results DataFrame
                         results_df = test_df.copy()
                         results_df['actual'] = results_df[target_col]
-                        results_df['predicted'] = predictions_df['predicted'].values
-                        
+                        if isinstance(predictions_df, pd.DataFrame) and 'predicted' in predictions_df.columns:
+                            results_df['predicted'] = predictions_df['predicted'].values
+                        else:
+                            results_df['predicted'] = np.array(predictions_df).flatten()
+
                         # Calculate metrics
                         actual = results_df['actual'].values
                         predicted = results_df['predicted'].values
-                        
+
                         mae = np.mean(np.abs(actual - predicted))
                         rmse = np.sqrt(np.mean((actual - predicted) ** 2))
                         mask = actual != 0
                         mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100 if mask.sum() > 0 else 0.0
-                        
+                        r2 = 1 - (np.sum((actual - predicted)**2) / np.sum((actual - np.mean(actual))**2)) if len(actual) > 1 else 0.0
+
+                        # Compare with benchmark metrics
+                        benchmark_metrics = tester.get('benchmark_metrics', {})
+                        if benchmark_metrics:
+                            benchmark_mae = benchmark_metrics.get('mae')
+                            if benchmark_mae:
+                                diff_pct = abs(mae - benchmark_mae) / benchmark_mae * 100 if benchmark_mae > 0 else 0
+                                if diff_pct > 10:
+                                    logger.warning(f"Metric difference from benchmark: MAE {mae:.4f} vs {benchmark_mae:.4f} ({diff_pct:.1f}% diff)")
+                                else:
+                                    logger.info(f"Metrics match benchmark: MAE {mae:.4f} vs {benchmark_mae:.4f} ({diff_pct:.1f}% diff)")
+
                         # Save predictions
                         predictions_path = STAGE4_OUT_DIR / f"results_{plan_id}.parquet"
                         results_df.to_parquet(predictions_path, index=False)
-                        
+
                         # Create and save execution result
                         result = ExecutionResult(
                             plan_id=plan_id,
                             status=ExecutionStatus.SUCCESS,
                             outputs={"predictions": str(predictions_path)},
-                            metrics={"mae": mae, "rmse": rmse, "mape": mape},
+                            metrics={"mae": mae, "rmse": rmse, "mape": mape, "r2": r2},
                             summary=f"Executed {tester.get('selected_method_name', 'winning method')} (MAE: {mae:.4f})"
                         )
-                        
+
                         DataPassingManager.save_artifact(
                             data=result.model_dump(),
                             output_dir=STAGE4_OUT_DIR,
                             filename=f"execution_result_{plan_id}.json",
-                            metadata={"stage": "stage4", "type": "execution_result", "method": tester.get('selected_method_id')}
+                            metadata={
+                                "stage": "stage4",
+                                "type": "execution_result",
+                                "method": tester.get('selected_method_id'),
+                                "benchmark_mae": benchmark_metrics.get('mae'),
+                            }
                         )
-                        
+
                         logger.info(f"Winning method execution succeeded with MAE: {mae:.4f}")
                         return result
                     else:
                         logger.warning("Could not find prediction function in winning method code")
-                        
+
             except Exception as method_error:
                 logger.warning(f"Winning method execution failed: {method_error}, falling back to naive prediction")
+                import traceback
+                logger.debug(traceback.format_exc())
 
         # ================================================================
         # PRIORITY 2: Fallback to naive prediction
         # ================================================================
         logger.warning("Using naive prediction fallback")
-        
+
+        # Use same split strategy for consistency
+        split_strategy = {}
+        if tester_path.exists():
+            try:
+                tester = DataPassingManager.load_artifact(tester_path)
+                split_strategy = tester.get('data_split_strategy', {})
+            except:
+                pass
+
+        train_size_pct = split_strategy.get('train_size', 0.7)
+        val_size_pct = split_strategy.get('validation_size', 0.15)
+
         # Create train/test split
-        train_size = int(len(df) * 0.8)
-        train_df = df.iloc[:train_size]
-        test_df = df.iloc[train_size:]
+        train_end_idx = int(len(df) * train_size_pct)
+        val_end_idx = int(len(df) * (train_size_pct + val_size_pct))
+        train_df = df.iloc[:train_end_idx]
+        test_df = df.iloc[val_end_idx:]
 
         # Simple naive prediction
         last_value = train_df[target_col].iloc[-1]
@@ -461,6 +543,7 @@ def _create_fallback_execution(plan_id: str) -> ExecutionResult:
         rmse = np.sqrt(np.mean((actual - predicted) ** 2))
         mask = actual != 0
         mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100 if mask.sum() > 0 else 0.0
+        r2 = 1 - (np.sum((actual - predicted)**2) / np.sum((actual - np.mean(actual))**2)) if len(actual) > 1 else 0.0
 
         # Save predictions
         predictions_path = STAGE4_OUT_DIR / f"results_{plan_id}.parquet"
@@ -471,7 +554,7 @@ def _create_fallback_execution(plan_id: str) -> ExecutionResult:
             plan_id=plan_id,
             status=ExecutionStatus.SUCCESS,
             outputs={"predictions": str(predictions_path)},
-            metrics={"mae": mae, "rmse": rmse, "mape": mape},
+            metrics={"mae": mae, "rmse": rmse, "mape": mape, "r2": r2},
             summary=f"Fallback execution with naive prediction (MAE: {mae:.4f})"
         )
 
@@ -487,6 +570,8 @@ def _create_fallback_execution(plan_id: str) -> ExecutionResult:
 
     except Exception as e:
         logger.error(f"Fallback execution failed: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return ExecutionResult(
             plan_id=plan_id,
             status=ExecutionStatus.FAILURE,

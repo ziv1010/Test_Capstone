@@ -54,16 +54,25 @@ STAGE2_SYSTEM_PROMPT = """You are a Task Proposal Agent. Analyze datasets and pr
 2. DO NOT invent datasets - use what exists
 3. STOP after calling save_task_proposals - do not continue
 4. READ dataset summaries carefully - pay attention to column semantics
+5. **AT LEAST 2 proposals MUST use MULTIPLE DATASETS (cross-dataset analysis)**
 
 ## Workflow (Follow Exactly)
 1. Call list_dataset_summaries() to see available data
 2. Call read_dataset_summary() for each dataset
-3. Call explore_data_relationships() if multiple datasets
+3. **ALWAYS call explore_data_relationships() to find join keys** (REQUIRED - not optional)
 4. Create 5 task proposals grounded in the data you observed:
    - 3 primary analytical tasks (forecasting, regression, classification)
    - 2 factor-based tasks (using categorical columns as analysis factors)
+   - **AT LEAST 2 tasks must combine 2+ datasets via joins**
 5. Call save_task_proposals() with your JSON
 6. STOP - you are done
+
+## MULTI-DATASET TASKS (CRITICAL)
+You MUST create at least 2 proposals that use MORE THAN ONE dataset:
+- Look for common columns (Year, Season, Crop, Region) across datasets
+- Create tasks that JOIN datasets to enrich the analysis
+- Example: "Join production data with export data to predict export potential"
+- The join_plan field should specify how datasets are joined
 
 ## Understanding Column Values
 When reading summaries, pay attention to:
@@ -89,16 +98,17 @@ These use categorical columns as analysis dimensions:
 - category: forecasting/regression/classification/clustering
 - title: Clear name
 - problem_statement: What will be predicted, which factors/groupings used
-- required_datasets: List of dataset filenames (MUST exist)
+- required_datasets: List of dataset filenames (MUST exist) - USE 2+ DATASETS WHEN POSSIBLE
 - target_column: Column to predict (MUST exist in data)
 - target_dataset: Dataset containing target
 - feature_columns: Include categorical columns used as factors
+- join_plan: If using multiple datasets, specify join keys and type
 - feasibility_score: 0-1 based on data quality
 
 ## Available Tools
 - list_dataset_summaries: See what datasets exist
 - read_dataset_summary: Get dataset details (includes semantic info)
-- explore_data_relationships: Find join possibilities
+- explore_data_relationships: Find join possibilities (MUST CALL THIS)
 - evaluate_forecasting_feasibility: Check if forecasting works
 - save_task_proposals: Save your proposals (CALL THIS TO FINISH)
 - get_proposal_template: Get JSON format
@@ -170,31 +180,56 @@ def run_stage2(pipeline_state: PipelineState = None) -> Stage2Output:
 
     Explores dataset summaries and proposes analytical tasks.
     """
+    import uuid
+    import random
+
     logger.info("Starting Stage 2: Task Proposal Generation")
 
     graph = create_stage2_agent()
 
-    initial_message = HumanMessage(content="""
+    # Generate unique session to avoid cached results
+    session_id = str(uuid.uuid4())[:8]
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Randomize task emphasis to get different proposals
+    task_emphasis_options = [
+        "Focus on tasks that combine MULTIPLE datasets through joins - cross-dataset analysis is preferred.",
+        "Prioritize tasks that leverage relationships between different datasets.",
+        "Look for opportunities to merge datasets and create richer analytical tasks.",
+        "Emphasize analytical tasks that require data from 2 or more datasets.",
+    ]
+    task_emphasis = random.choice(task_emphasis_options)
+
+    initial_message = HumanMessage(content=f"""
+Session: {session_id} | Time: {timestamp}
+
 Please analyze the available dataset summaries and propose analytical tasks:
 
 1. First, list all available dataset summaries
 2. Read each summary to understand the data - pay attention to column semantics
-3. Explore relationships between datasets (possible joins)
+3. **IMPORTANT**: Call explore_data_relationships() to find join possibilities between datasets
 4. For datasets with datetime columns, evaluate forecasting feasibility
 5. Propose 5 tasks total:
    - 3 primary tasks (forecasting, regression, classification)
    - 2 factor-based tasks (using categorical columns as grouping/factors)
 6. Save your proposals
 
+## CRITICAL REQUIREMENTS:
+- **{task_emphasis}**
+- At least 2 of your 5 proposals MUST use MORE THAN ONE DATASET (multi-dataset tasks)
+- Explore join keys between datasets and create tasks that leverage combined data
+- Think creatively about how different datasets can complement each other
+
 When reading summaries:
 - Look at value_interpretation to understand what each column means
 - For categorical columns, understand which values are individual items vs aggregates
-- Use this understanding when designing tasks
+- Identify common columns across datasets that could be used for joining
 
 When complete, save proposals and summarize what you proposed.
 """)
 
-    config = {"configurable": {"thread_id": "stage2_main"}}
+    # Use unique thread_id to ensure fresh conversation each run
+    config = {"configurable": {"thread_id": f"stage2_{session_id}_{timestamp}"}}
     initial_state = Stage2State(messages=[initial_message])
 
     try:
@@ -234,27 +269,39 @@ def run_stage2_for_query(user_query: str) -> Stage2Output:
 
     Tailors proposals to match the user's intent.
     """
+    import uuid
+
     logger.info(f"Running Stage 2 for query: {user_query}")
 
     graph = create_stage2_agent()
 
+    # Generate unique session to avoid cached results
+    session_id = str(uuid.uuid4())[:8]
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     initial_message = HumanMessage(content=f"""
+Session: {session_id} | Time: {timestamp}
+
 A user has a specific analytical goal:
 
 "{user_query}"
 
 Please:
 1. List and read available dataset summaries
-2. Evaluate if this specific goal is achievable with the data
-3. If feasible, create a task proposal for this goal
-4. Also propose 2-3 alternative tasks in case the primary goal isn't possible
-5. PRIORITIZE FORECASTING tasks when datetime columns exist
-6. Save all proposals
+2. **ALWAYS call explore_data_relationships()** to find join possibilities
+3. Evaluate if this specific goal is achievable with the data
+4. If feasible, create a task proposal for this goal
+5. Also propose 2-3 alternative tasks in case the primary goal isn't possible
+6. PRIORITIZE FORECASTING tasks when datetime columns exist
+7. **Include at least 1 multi-dataset task** that combines data through joins
+8. Save all proposals
 
 Focus on making the user's request work if at all possible.
+When creating alternative tasks, consider how multiple datasets could be combined.
 """)
 
-    config = {"configurable": {"thread_id": f"stage2_query_{hash(user_query)}"}}
+    # Use unique thread_id to ensure fresh conversation each run
+    config = {"configurable": {"thread_id": f"stage2_query_{session_id}_{timestamp}"}}
     initial_state = Stage2State(messages=[initial_message])
 
     try:

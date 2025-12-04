@@ -304,9 +304,14 @@ Save outputs:
 
 
 def _create_fallback_execution(plan_id: str) -> ExecutionResult:
-    """Create fallback execution with naive predictions."""
+    """
+    Create execution using winning method code from Stage 3.5B.
+    Only falls back to naive prediction if method execution fails.
+    """
     import pandas as pd
     import numpy as np
+    import sys
+    from io import StringIO
 
     try:
         # Load prepared data
@@ -326,6 +331,106 @@ def _create_fallback_execution(plan_id: str) -> ExecutionResult:
             numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
             target_col = numeric_cols[-1] if numeric_cols else df.columns[-1]
 
+        # ================================================================
+        # PRIORITY 1: Try to execute winning method from Stage 3.5B
+        # ================================================================
+        tester_path = STAGE3_5B_OUT_DIR / f"tester_{plan_id}.json"
+        if tester_path.exists():
+            try:
+                tester = DataPassingManager.load_artifact(tester_path)
+                winning_code = tester.get('winning_method_code')
+                
+                if winning_code:
+                    logger.info(f"Attempting to execute winning method {tester.get('selected_method_id')}")
+                    
+                    # Create train/test split (same as Stage 3.5B)
+                    train_size = int(len(df) * 0.8)
+                    train_df = df.iloc[:train_size].copy()
+                    test_df = df.iloc[train_size:].copy()
+                    
+                    # Setup execution namespace
+                    namespace = {
+                        'pd': pd,
+                        'np': np,
+                        'train_df': train_df,
+                        'test_df': test_df,
+                        'target_col': target_col,
+                        'date_col': tester.get('date_column'),
+                    }
+                    
+                    # Add ML imports
+                    try:
+                        from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+                        from sklearn.linear_model import LinearRegression, Ridge, Lasso
+                        namespace['RandomForestRegressor'] = RandomForestRegressor
+                        namespace['GradientBoostingRegressor'] = GradientBoostingRegressor
+                        namespace['LinearRegression'] = LinearRegression
+                        namespace['Ridge'] = Ridge
+                        namespace['Lasso'] = Lasso
+                    except ImportError:
+                        pass
+                    
+                    # Execute the winning method code
+                    exec(winning_code, namespace)
+                    
+                    # Get the prediction function name
+                    func_name = None
+                    for name, obj in namespace.items():
+                        if callable(obj) and name.startswith('predict_'):
+                            func_name = name
+                            break
+                    
+                    if func_name:
+                        predict_func = namespace[func_name]
+                        predictions_df = predict_func(train_df, test_df, target_col)
+                        
+                        # Create results DataFrame
+                        results_df = test_df.copy()
+                        results_df['actual'] = results_df[target_col]
+                        results_df['predicted'] = predictions_df['predicted'].values
+                        
+                        # Calculate metrics
+                        actual = results_df['actual'].values
+                        predicted = results_df['predicted'].values
+                        
+                        mae = np.mean(np.abs(actual - predicted))
+                        rmse = np.sqrt(np.mean((actual - predicted) ** 2))
+                        mask = actual != 0
+                        mape = np.mean(np.abs((actual[mask] - predicted[mask]) / actual[mask])) * 100 if mask.sum() > 0 else 0.0
+                        
+                        # Save predictions
+                        predictions_path = STAGE4_OUT_DIR / f"results_{plan_id}.parquet"
+                        results_df.to_parquet(predictions_path, index=False)
+                        
+                        # Create and save execution result
+                        result = ExecutionResult(
+                            plan_id=plan_id,
+                            status=ExecutionStatus.SUCCESS,
+                            outputs={"predictions": str(predictions_path)},
+                            metrics={"mae": mae, "rmse": rmse, "mape": mape},
+                            summary=f"Executed {tester.get('selected_method_name', 'winning method')} (MAE: {mae:.4f})"
+                        )
+                        
+                        DataPassingManager.save_artifact(
+                            data=result.model_dump(),
+                            output_dir=STAGE4_OUT_DIR,
+                            filename=f"execution_result_{plan_id}.json",
+                            metadata={"stage": "stage4", "type": "execution_result", "method": tester.get('selected_method_id')}
+                        )
+                        
+                        logger.info(f"Winning method execution succeeded with MAE: {mae:.4f}")
+                        return result
+                    else:
+                        logger.warning("Could not find prediction function in winning method code")
+                        
+            except Exception as method_error:
+                logger.warning(f"Winning method execution failed: {method_error}, falling back to naive prediction")
+
+        # ================================================================
+        # PRIORITY 2: Fallback to naive prediction
+        # ================================================================
+        logger.warning("Using naive prediction fallback")
+        
         # Create train/test split
         train_size = int(len(df) * 0.8)
         train_df = df.iloc[:train_size]

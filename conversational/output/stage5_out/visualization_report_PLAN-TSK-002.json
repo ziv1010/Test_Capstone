@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-04T17:07:54.065865",
-    "checksum": "6c86695f22d8232a",
+    "timestamp": "2025-12-05T01:36:32.659706",
+    "checksum": "13da0cd7e2d0d141",
     "version": "1.0",
     "stage": "stage5",
     "type": "visualization_report"
@@ -11,7 +11,7 @@
     "visualizations": [
       {
         "filename": "actual_vs_predicted.png",
-        "description": "Actual vs Predicted values comparison"
+        "description": "Scatter plot comparing actual vs predicted values"
       },
       {
         "filename": "residuals_histogram.png",
@@ -19,13 +19,13 @@
       },
       {
         "filename": "time_series_comparison.png",
-        "description": "Time series of actual vs predicted values"
+        "description": "Time series comparison of actual and predicted values across seasons"
       },
       {
         "filename": "residuals_over_time.png",
-        "description": "Residuals plotted over time periods"
+        "description": "Residuals plotted across seasons with reference line at zero"
       }
     ],
-    "summary": "Model shows significant prediction errors (MAPE 93.01%) with consistent underprediction. Residuals exhibit positive bias and non-normal distribution. Time series analysis reveals poor alignment between actual and predicted values. Model performance requires substantial improvement."
+    "summary": "Model shows significant prediction errors (MAPE 2953.5%) with negative bias (-6.33 mean residual). Residuals appear normally distributed but with high variance (14.98 std). Time series analysis reveals inconsistent prediction accuracy across seasons. Model performance requires improvement through feature engineering or algorithm adjustment."
   }
 }

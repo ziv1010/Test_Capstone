@@ -266,121 +266,169 @@ def python_sandbox_stage3_5a(code: str, description: str = "") -> str:
 @tool
 def get_method_templates() -> str:
     """
-    Get templates for the three required forecasting methods.
+    Get implementation PATTERNS for algorithms (not specific algorithms).
 
-    Returns templates for baseline, statistical, and ML methods.
+    Returns code structure templates that the agent should adapt based on
+    its data analysis. The agent chooses which algorithms to use.
     """
     templates = {
-        "baseline": {
-            "method_id": "M1",
-            "name": "Moving Average",
-            "category": "baseline",
-            "description": "Simple moving average baseline",
-            "implementation_code": """
-def predict_moving_average(train_df, test_df, target_col, window=7):
+        "code_patterns": {
+            "baseline_pattern": {
+                "description": "Pattern for simple baseline methods",
+                "template": """
+def predict_{METHOD_NAME}(train_df, test_df, target_col, **params):
     import pandas as pd
     import numpy as np
-
-    # Calculate moving average from training data
-    last_values = train_df[target_col].tail(window)
-    prediction = last_values.mean()
-
-    # Create predictions DataFrame
+    
+    # TODO: Implement your chosen baseline approach
+    # Examples: mean prediction, last value, moving average, most frequent class
+    
+    baseline_prediction = ...  # YOUR BASELINE LOGIC HERE
+    
     predictions = pd.DataFrame({
-        'predicted': [prediction] * len(test_df)
+        'predicted': [baseline_prediction] * len(test_df)
     }, index=test_df.index)
-
+    
     return predictions
 """,
-            "required_libraries": ["pandas", "numpy"],
-            "hyperparameters": {"window": 7},
-            "expected_strengths": ["Simple", "Robust to outliers", "No training needed"],
-            "expected_weaknesses": ["Cannot capture trends", "Ignores seasonality"]
-        },
-
-        "statistical": {
-            "method_id": "M2",
-            "name": "ARIMA",
-            "category": "statistical",
-            "description": "Auto-regressive integrated moving average",
-            "implementation_code": """
-def predict_arima(train_df, test_df, target_col, date_col, order=(1,1,1)):
+                "notes": "Baseline should be simple with minimal assumptions. Good for comparison."
+            },
+            "statistical_pattern": {
+                "description": "Pattern for statistical/traditional methods",
+                "template": """
+def predict_{METHOD_NAME}(train_df, test_df, target_col, feature_cols=None, **params):
     import pandas as pd
     import numpy as np
-    from statsmodels.tsa.arima.model import ARIMA
-
-    # Prepare training data
-    y_train = train_df[target_col].values
-
-    # Fit ARIMA model
-    model = ARIMA(y_train, order=order)
-    fitted = model.fit()
-
-    # Forecast
-    n_forecast = len(test_df)
-    forecast = fitted.forecast(steps=n_forecast)
-
-    # Create predictions DataFrame
-    predictions = pd.DataFrame({
-        'predicted': forecast
-    }, index=test_df.index)
-
-    return predictions
-""",
-            "required_libraries": ["pandas", "numpy", "statsmodels"],
-            "hyperparameters": {"order": [1, 1, 1]},
-            "expected_strengths": ["Captures trends", "Well-understood theory", "Good for stationary data"],
-            "expected_weaknesses": ["Assumes linear relationships", "Sensitive to parameter tuning"]
-        },
-
-        "ml": {
-            "method_id": "M3",
-            "name": "Random Forest",
-            "category": "ml",
-            "description": "Random forest with lag features",
-            "implementation_code": """
-def predict_random_forest(train_df, test_df, target_col, date_col, n_lags=7):
-    import pandas as pd
-    import numpy as np
-    from sklearn.ensemble import RandomForestRegressor
-
-    def create_lag_features(df, target_col, n_lags):
-        result = df.copy()
-        for i in range(1, n_lags + 1):
-            result[f'lag_{i}'] = result[target_col].shift(i)
-        return result.dropna()
-
-    # Create features
-    train_with_lags = create_lag_features(train_df, target_col, n_lags)
-    feature_cols = [f'lag_{i}' for i in range(1, n_lags + 1)]
-
-    X_train = train_with_lags[feature_cols]
-    y_train = train_with_lags[target_col]
-
-    # Train model
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
-
-    # Predict (using last known values for lags)
-    predictions = []
-    last_values = list(train_df[target_col].tail(n_lags).values)
-
-    for _ in range(len(test_df)):
-        X_pred = pd.DataFrame([last_values[::-1]], columns=feature_cols)
-        pred = model.predict(X_pred)[0]
-        predictions.append(pred)
-        last_values = [pred] + last_values[:-1]
-
+    # Import your chosen library (sklearn, statsmodels, etc.)
+    
+    # Prepare data
+    if feature_cols:
+        X_train = train_df[feature_cols].fillna(0)
+        X_test = test_df[feature_cols].fillna(0)
+    y_train = train_df[target_col]
+    
+    # TODO: Initialize and fit your chosen model
+    model = ...  # YOUR MODEL HERE
+    model.fit(...)
+    
+    # Generate predictions
+    predictions = model.predict(...)
+    
     return pd.DataFrame({'predicted': predictions}, index=test_df.index)
 """,
-            "required_libraries": ["pandas", "numpy", "scikit-learn"],
-            "hyperparameters": {"n_lags": 7, "n_estimators": 100},
-            "expected_strengths": ["Handles non-linear patterns", "Feature importance", "Robust to outliers"],
-            "expected_weaknesses": ["May overfit", "Cannot extrapolate beyond training range"]
+                "notes": "Use interpretable, well-established algorithms appropriate for the data."
+            },
+            "ml_pattern": {
+                "description": "Pattern for machine learning methods",
+                "template": """
+def predict_{METHOD_NAME}(train_df, test_df, target_col, feature_cols=None, **params):
+    import pandas as pd
+    import numpy as np
+    # Import your chosen ML library
+    
+    # Prepare features
+    if feature_cols:
+        X_train = train_df[feature_cols].fillna(0)
+        X_test = test_df[feature_cols].fillna(0)
+    y_train = train_df[target_col]
+    
+    # Optional: Feature scaling
+    # from sklearn.preprocessing import StandardScaler
+    # scaler = StandardScaler()
+    # X_train = scaler.fit_transform(X_train)
+    # X_test = scaler.transform(X_test)
+    
+    # TODO: Initialize your chosen ML model with hyperparameters
+    model = ...  # YOUR ML MODEL HERE
+    model.fit(X_train, y_train)
+    
+    predictions = model.predict(X_test)
+    
+    return pd.DataFrame({'predicted': predictions}, index=test_df.index)
+""",
+                "notes": "Choose ML algorithm based on data size, patterns, and task requirements."
+            },
+            "timeseries_pattern": {
+                "description": "Pattern for time series forecasting",
+                "template": """
+def predict_{METHOD_NAME}(train_df, test_df, target_col, date_col=None, **params):
+    import pandas as pd
+    import numpy as np
+    # Import your chosen time series library
+    
+    y_train = train_df[target_col].values
+    n_forecast = len(test_df)
+    
+    # TODO: Implement your time series approach
+    # Options: ARIMA, exponential smoothing, Prophet, lag-based ML, etc.
+    
+    # For statistical TS:
+    # model = YOUR_TS_MODEL(y_train, ...)
+    # fitted = model.fit()
+    # forecast = fitted.forecast(steps=n_forecast)
+    
+    # For ML with lags:
+    # Create lag features, train, predict iteratively
+    
+    predictions = ...  # YOUR FORECAST HERE
+    
+    return pd.DataFrame({'predicted': predictions}, index=test_df.index)
+""",
+                "notes": "Consider data frequency, trend, seasonality when choosing approach."
+            },
+            "clustering_pattern": {
+                "description": "Pattern for clustering methods",
+                "template": """
+def predict_{METHOD_NAME}(train_df, test_df, feature_cols, **params):
+    import pandas as pd
+    import numpy as np
+    from sklearn.preprocessing import StandardScaler
+    # Import your chosen clustering library
+    
+    X = train_df[feature_cols].fillna(0)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    # TODO: Initialize your chosen clustering algorithm
+    model = ...  # YOUR CLUSTERING MODEL HERE
+    labels = model.fit_predict(X_scaled)
+    
+    return pd.DataFrame({'predicted': labels}, index=train_df.index)
+""",
+                "notes": "Consider cluster shapes, number of clusters, and outlier handling."
+            }
+        },
+        "method_structure": {
+            "required_fields": [
+                "method_id (M1, M2, or M3)",
+                "name (descriptive name you choose)",
+                "category (baseline, statistical, or ml)",
+                "description (what it does and why you chose it)",
+                "implementation_code (complete, runnable function)",
+                "required_libraries (list of imports)",
+                "hyperparameters (key parameters with values)",
+                "expected_strengths (list)",
+                "expected_weaknesses (list)"
+            ],
+            "complexity_progression": "M1 (simplest) < M2 (interpretable) < M3 (most complex)"
+        },
+        "selection_guidance": {
+            "analyze_first": [
+                "Data size (rows, columns)",
+                "Feature types (numeric, categorical, temporal)",
+                "Target distribution",
+                "Missing values",
+                "Patterns (linear, non-linear, seasonal)"
+            ],
+            "then_choose": [
+                "Algorithm family based on task type",
+                "Specific algorithm based on data characteristics",
+                "Hyperparameters based on data size and complexity"
+            ]
         }
     }
 
-    return "Method Templates:\n\n" + json.dumps(templates, indent=2)
+    return "Implementation Patterns (adapt based on YOUR data analysis):\n\n" + json.dumps(templates, indent=2)
 
 
 @tool

@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-04T16:10:19.164510",
-    "checksum": "f6548d129487dc9f",
+    "timestamp": "2025-12-05T01:17:37.943525",
+    "checksum": "8a5d8a83c8584798",
     "version": "1.0",
     "stage": "stage3b",
     "type": "prepared_data_metadata"
@@ -9,38 +9,38 @@
   "data": {
     "plan_id": "PLAN-TSK-002",
     "prepared_file_path": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage3b_data_prep/prepared_PLAN-TSK-002.parquet",
-    "original_row_count": 6,
-    "final_row_count": 6,
+    "original_row_count": 104,
+    "final_row_count": 104,
     "columns_created": [
-      "HS Code",
-      "Description",
-      "2018 - 19-Value (USD)",
-      "2019 - 20-Value (USD)",
-      "2020 - 21-Value (USD)",
-      "2021 - 22-Value (USD)",
-      "2022 - 23-Value (USD)",
-      "2023 - 24-Value (USD)",
-      "2024 - 25-Value (USD)",
+      "Crop",
+      "Season",
+      "Area-2015-16",
+      "Area-2016-17",
+      "Area-2017-18",
+      "Area-2018-19",
+      "Area-2019-20",
+      "Area-2020-21",
+      "Area-2021-22",
+      "Area-2022-23",
+      "Area-2023-24",
+      "Area-2024-25",
       "lag_1",
-      "lag_2",
-      "lag_3",
       "rolling_mean_3y"
     ],
     "transformations_applied": [
-      "1. Filtered rows with non-null target values\n2. Imputed missing values in '2023 - 24-Value (USD)' with median\n3. Created lag_1 (2022-23)",
-      "lag_2 (2021-22)",
-      "lag_3 (2020-21)\n4. Created rolling_mean_3y of 2022-23",
-      "2021-22",
-      "2020-21"
+      "categorical mode imputation",
+      "numerical median imputation",
+      "lag_1 feature",
+      "rolling_mean_3y feature"
     ],
     "data_quality_report": {
-      "total_rows": 6,
-      "total_columns": 13,
+      "total_rows": 104,
+      "total_columns": 14,
       "null_counts": {},
       "duplicate_rows": 0
     },
     "has_no_nulls": true,
     "ready_for_modeling": true,
-    "quality_notes": "Final dataset has 6 rows, 13 columns with zero null values. All feature engineering steps completed successfully."
+    "quality_notes": "Zero nulls confirmed after imputation and feature engineering"
   }
 }

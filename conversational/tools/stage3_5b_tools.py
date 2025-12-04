@@ -93,10 +93,32 @@ def load_checkpoint(plan_id: str) -> str:
         if not checkpoint_path.exists():
             return f"No checkpoint found for {plan_id}. Starting fresh."
 
-        checkpoint = DataPassingManager.load_artifact(checkpoint_path)
+        raw_data = DataPassingManager.load_artifact(checkpoint_path)
+        
+        # Handle wrapped data structure from DataPassingManager
+        if isinstance(raw_data, dict) and 'data' in raw_data:
+            checkpoint = raw_data['data']
+        else:
+            checkpoint = raw_data
+        
+        # Validate checkpoint is a dict
+        if not isinstance(checkpoint, dict):
+            logger.warning(f"Invalid checkpoint structure: {type(checkpoint)}")
+            return f"Invalid checkpoint format for {plan_id}. Starting fresh."
 
         global _benchmark_results
-        _benchmark_results = checkpoint.get('completed_results', {})
+        completed_results = checkpoint.get('completed_results', {})
+        
+        # Handle the case where completed_results is a single method object
+        # instead of a dict keyed by method_id
+        if isinstance(completed_results, dict) and 'method_id' in completed_results:
+            # Convert single result to keyed format
+            method_id = completed_results.get('method_id')
+            _benchmark_results = {method_id: completed_results}
+        elif isinstance(completed_results, dict):
+            _benchmark_results = completed_results
+        else:
+            _benchmark_results = {}
 
         completed = checkpoint.get('methods_completed', [])
 
@@ -107,13 +129,25 @@ def load_checkpoint(plan_id: str) -> str:
             "Results so far:",
         ]
 
-        for method_id, results in _benchmark_results.items():
-            avg_mae = np.mean([r.get('mae', 0) for r in results.get('iterations', [])])
-            result.append(f"  {method_id}: Avg MAE = {avg_mae:.4f}")
+        for method_id, data in _benchmark_results.items():
+            # Handle different result formats
+            if isinstance(data, dict):
+                if 'iterations' in data:
+                    avg_mae = np.mean([r.get('mae', 0) for r in data.get('iterations', [])])
+                elif 'avg_mae' in data:
+                    avg_mae = data.get('avg_mae', 0)
+                else:
+                    avg_mae = data.get('mae', 0)
+                result.append(f"  {method_id}: Avg MAE = {avg_mae:.4f}")
+            else:
+                result.append(f"  {method_id}: (invalid result format)")
 
         return "\n".join(result)
 
     except Exception as e:
+        logger.error(f"Error loading checkpoint: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return f"Error loading checkpoint: {e}"
 
 
@@ -380,6 +414,11 @@ def select_best_method(results_json: str) -> str:
     Select the best method based on benchmark results.
 
     Uses average MAE as primary selection criterion.
+    
+    Accepts multiple formats:
+    1. Dict with method_id keys and 'iterations' array: {"M1": {"iterations": [{"mae": ...}], ...}}
+    2. Dict with method_id keys and direct 'avg_mae': {"M1": {"avg_mae": ..., "valid": true}, ...}
+    3. List of method objects: [{"method_id": "M1", "avg_mae": ..., "valid": true}, ...]
 
     Args:
         results_json: JSON with all benchmark results
@@ -393,30 +432,60 @@ def select_best_method(results_json: str) -> str:
         result = ["=== Method Selection ===\n"]
         method_scores = []
 
-        for method_id, data in results.items():
-            iterations = data.get('iterations', [])
-            if not iterations:
-                result.append(f"{method_id}: No valid iterations")
-                continue
+        # Handle list format: [{"method_id": "M1", "avg_mae": ..., ...}, ...]
+        if isinstance(results, list):
+            for item in results:
+                method_id = item.get('method_id', item.get('id', 'Unknown'))
+                name = item.get('name', method_id)
+                avg_mae = item.get('avg_mae', item.get('mae', float('inf')))
+                avg_rmse = item.get('avg_rmse', item.get('rmse', float('inf')))
+                is_valid = item.get('valid', item.get('is_valid', True))
 
-            # Calculate average metrics
-            avg_mae = np.mean([it.get('mae', float('inf')) for it in iterations])
-            avg_rmse = np.mean([it.get('rmse', float('inf')) for it in iterations])
+                result.append(f"{method_id} ({name}):")
+                result.append(f"  Avg MAE: {avg_mae:.6f}")
+                result.append(f"  Avg RMSE: {avg_rmse:.6f}" if avg_rmse != float('inf') else "  Avg RMSE: N/A")
+                result.append(f"  Valid: {is_valid}")
 
-            is_valid = data.get('is_valid', True)
+                if is_valid:
+                    method_scores.append({
+                        'method_id': method_id,
+                        'name': name,
+                        'avg_mae': float(avg_mae),
+                        'avg_rmse': float(avg_rmse) if avg_rmse != float('inf') else float('inf')
+                    })
+        else:
+            # Handle dict formats
+            for method_id, data in results.items():
+                iterations = data.get('iterations', [])
+                
+                # Check if direct avg_mae is provided (new format)
+                if not iterations and 'avg_mae' in data:
+                    avg_mae = float(data.get('avg_mae', float('inf')))
+                    avg_rmse = float(data.get('avg_rmse', data.get('rmse', float('inf'))))
+                    is_valid = data.get('valid', data.get('is_valid', True))
+                elif iterations:
+                    # Calculate from iterations (old format)
+                    avg_mae = np.mean([it.get('mae', float('inf')) for it in iterations])
+                    avg_rmse = np.mean([it.get('rmse', float('inf')) for it in iterations])
+                    is_valid = data.get('is_valid', True)
+                else:
+                    result.append(f"{method_id}: No valid data (missing iterations or avg_mae)")
+                    continue
 
-            result.append(f"{method_id} ({data.get('name', 'Unknown')}):")
-            result.append(f"  Avg MAE: {avg_mae:.6f}")
-            result.append(f"  Avg RMSE: {avg_rmse:.6f}")
-            result.append(f"  Valid: {is_valid}")
+                name = data.get('name', method_id)
 
-            if is_valid:
-                method_scores.append({
-                    'method_id': method_id,
-                    'name': data.get('name', method_id),
-                    'avg_mae': avg_mae,
-                    'avg_rmse': avg_rmse
-                })
+                result.append(f"{method_id} ({name}):")
+                result.append(f"  Avg MAE: {avg_mae:.6f}")
+                result.append(f"  Avg RMSE: {avg_rmse:.6f}" if avg_rmse != float('inf') else "  Avg RMSE: N/A")
+                result.append(f"  Valid: {is_valid}")
+
+                if is_valid:
+                    method_scores.append({
+                        'method_id': method_id,
+                        'name': name,
+                        'avg_mae': avg_mae,
+                        'avg_rmse': avg_rmse
+                    })
 
         result.append("")
 
@@ -442,6 +511,8 @@ def select_best_method(results_json: str) -> str:
         return "\n".join(result)
 
     except Exception as e:
+        import traceback
+        logger.error(f"Error in select_best_method: {e}\n{traceback.format_exc()}")
         return f"Error selecting method: {e}"
 
 
@@ -504,6 +575,35 @@ def save_tester_output(output_json: str) -> str:
 
         plan_id = output['plan_id']
         filename = f"tester_{plan_id}.json"
+
+        # ============================================================
+        # CRITICAL: Store winning method's implementation code
+        # This ensures Stage 4 can execute the exact same code/algorithm
+        # ============================================================
+        if 'winning_method_code' not in output:
+            try:
+                proposal_path = STAGE3_5A_OUT_DIR / f"method_proposal_{plan_id}.json"
+                if proposal_path.exists():
+                    proposal = DataPassingManager.load_artifact(proposal_path)
+                    selected_id = output['selected_method_id']
+                    
+                    # Find and store winning method's code
+                    for method in proposal.get('methods_proposed', []):
+                        if method.get('method_id') == selected_id:
+                            output['winning_method_code'] = method.get('implementation_code', '')
+                            output['winning_method_hyperparameters'] = method.get('hyperparameters', {})
+                            output['winning_method_libraries'] = method.get('required_libraries', [])
+                            logger.info(f"Stored winning method code for {selected_id}")
+                            break
+                    
+                    # Also store data split strategy and column info for consistency
+                    output['data_split_strategy'] = proposal.get('data_split_strategy', {})
+                    output['target_column'] = proposal.get('target_column')
+                    output['date_column'] = proposal.get('date_column')
+                else:
+                    logger.warning(f"Method proposal not found at {proposal_path}, cannot store winning code")
+            except Exception as e:
+                logger.error(f"Failed to store winning method code: {e}")
 
         # Ensure output directory exists
         STAGE3_5B_OUT_DIR.mkdir(parents=True, exist_ok=True)

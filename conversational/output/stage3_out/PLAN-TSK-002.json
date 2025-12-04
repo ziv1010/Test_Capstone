@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-04T16:07:59.691907",
-    "checksum": "31d95a8b08a296e5",
+    "timestamp": "2025-12-04T23:42:39.928441",
+    "checksum": "69bf354cddd29160",
     "version": "1.0",
     "stage": "stage3",
     "type": "execution_plan"
@@ -9,26 +9,27 @@
   "data": {
     "plan_id": "PLAN-TSK-002",
     "selected_task_id": "TSK-002",
-    "goal": "Predict future rice export values to Bangladesh using historical data",
+    "goal": "Predict crop yield by state using historical area data",
     "task_category": "regression",
     "file_instructions": [
       {
-        "filename": "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.csv",
+        "filename": "All-India-profile_-Crop-wise-Area.csv",
         "filepath": "data/",
         "columns_to_use": [
-          "HS Code",
-          "Description",
-          "2018 - 19-Value (USD)",
-          "2019 - 20-Value (USD)",
-          "2020 - 21-Value (USD)",
-          "2021 - 22-Value (USD)",
-          "2022 - 23-Value (USD)",
-          "2023 - 24-Value (USD)",
-          "2024 - 25-Value (USD)"
+          "Crop",
+          "Season",
+          "Area-2015-16",
+          "Area-2016-17",
+          "Area-2017-18",
+          "Area-2018-19",
+          "Area-2019-20",
+          "Area-2020-21",
+          "Area-2021-22",
+          "Area-2022-23",
+          "Area-2023-24",
+          "Area-2024-25"
         ],
-        "filters": [
-          "2024 - 25-Value (USD).notnull()"
-        ],
+        "filters": [],
         "date_column": null,
         "parse_dates": []
       }
@@ -37,58 +38,41 @@
     "feature_engineering": [
       {
         "name": "lag_1",
-        "description": "Previous year's value",
+        "description": "Previous year's area as predictor",
         "source_columns": [
-          "2022 - 23-Value (USD)"
+          "Area-2021-22"
         ],
-        "implementation_code": "df['lag_1'] = df['2022 - 23-Value (USD)']",
-        "dtype": null
-      },
-      {
-        "name": "lag_2",
-        "description": "Two years prior value",
-        "source_columns": [
-          "2021 - 22-Value (USD)"
-        ],
-        "implementation_code": "df['lag_2'] = df['2021 - 22-Value (USD)']",
-        "dtype": null
-      },
-      {
-        "name": "lag_3",
-        "description": "Three years prior value",
-        "source_columns": [
-          "2020 - 21-Value (USD)"
-        ],
-        "implementation_code": "df['lag_3'] = df['2020 - 21-Value (USD)']",
+        "implementation_code": "df['lag_1'] = df['Area-2021-22']",
         "dtype": null
       },
       {
         "name": "rolling_mean_3y",
-        "description": "3-year rolling mean",
+        "description": "3-year rolling mean of area",
         "source_columns": [
-          "2022 - 23-Value (USD)",
-          "2021 - 22-Value (USD)",
-          "2020 - 21-Value (USD)"
+          "Area-2020-21",
+          "Area-2021-22",
+          "Area-2022-23"
         ],
-        "implementation_code": "df['rolling_mean_3y'] = df[['2022 - 23-Value (USD)', '2021 - 22-Value (USD)', '2020 - 21-Value (USD)']].mean(axis=1)",
+        "implementation_code": "df['rolling_mean_3y'] = df[['Area-2020-21', 'Area-2021-22', 'Area-2022-23']].mean(axis=1)",
         "dtype": null
       }
     ],
-    "target_column": "2024 - 25-Value (USD)",
+    "target_column": "Area-2022-23",
     "date_column": null,
     "validation_strategy": "temporal",
     "train_end_date": null,
     "validation_end_date": null,
     "expected_model_types": [
-      "RandomForestRegressor",
-      "XGBRegressor"
+      "LinearRegression",
+      "RandomForestRegressor"
     ],
     "evaluation_metrics": [
+      "MAE",
       "RMSE",
-      "MAE"
+      "R2"
     ],
     "output_columns": [],
     "artifacts_to_save": [],
-    "created_at": "2025-12-04T16:07:59.691597"
+    "created_at": "2025-12-04T23:42:39.928225"
   }
 }

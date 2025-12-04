@@ -1,11 +1,11 @@
 {
   "_meta": {
-    "timestamp": "2025-12-04T17:06:06.873623",
-    "checksum": "3c826e6b138c1cb8",
+    "timestamp": "2025-12-05T01:35:14.274954",
+    "checksum": "a16e4247f964b8d0",
     "version": "1.0",
     "stage": "stage4",
     "type": "execution_result",
-    "fallback": true
+    "method": "M2"
   },
   "data": {
     "plan_id": "PLAN-TSK-002",
@@ -14,15 +14,15 @@
       "predictions": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage4_out/results_PLAN-TSK-002.parquet"
     },
     "metrics": {
-      "mae": 320807.62,
-      "rmse": 321206.84903088305,
-      "mape": 93.01018004306101
+      "mae": 11.214120123053243,
+      "rmse": 15.925465471620347,
+      "mape": 2953.495621342474
     },
-    "summary": "Fallback execution with naive prediction (MAE: 320807.6200)",
+    "summary": "Executed Linear Regression with Lag Features (MAE: 11.2141)",
     "errors": [],
     "detailed_log": null,
     "data_shape": null,
     "execution_time_seconds": null,
-    "created_at": "2025-12-04 17:06:06.873512"
+    "created_at": "2025-12-05 01:35:14.274821"
   }
 }

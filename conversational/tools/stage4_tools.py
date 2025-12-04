@@ -139,6 +139,9 @@ def get_selected_method_code(plan_id: str) -> str:
     """
     Get the implementation code for the selected method.
 
+    First tries tester output (Stage 3.5B) which has the verified winning code,
+    then falls back to method proposal (Stage 3.5A) if not found.
+
     Args:
         plan_id: Plan ID
 
@@ -146,26 +149,71 @@ def get_selected_method_code(plan_id: str) -> str:
         Method details and implementation code
     """
     try:
-        # Load method proposals
+        # ================================================================
+        # PRIORITY 1: Load from tester output (has verified winning code)
+        # ================================================================
+        tester_path = STAGE3_5B_OUT_DIR / f"tester_{plan_id}.json"
+        if tester_path.exists():
+            tester = DataPassingManager.load_artifact(tester_path)
+            
+            # Check if winning method code is stored in tester output
+            if tester.get('winning_method_code'):
+                selected_id = tester.get('selected_method_id')
+                selected_name = tester.get('selected_method_name', selected_id)
+                
+                result = [
+                    f"=== Selected Method: {selected_id} (from Stage 3.5B tester output) ===",
+                    f"Name: {selected_name}",
+                    f"Target Column: {tester.get('target_column', 'N/A')}",
+                    f"Date Column: {tester.get('date_column', 'N/A')}",
+                    f"Libraries: {tester.get('winning_method_libraries', [])}",
+                    "",
+                    "Data Split Strategy:",
+                    json.dumps(tester.get('data_split_strategy', {}), indent=2),
+                    "",
+                    "Implementation Code:",
+                    "```python",
+                    tester.get('winning_method_code'),
+                    "```",
+                    "",
+                    "Hyperparameters:",
+                    json.dumps(tester.get('winning_method_hyperparameters', {}), indent=2),
+                    "",
+                    "Benchmark Results:",
+                    f"  Selection Rationale: {tester.get('selection_rationale', 'N/A')}",
+                ]
+                
+                # Add benchmark metrics for the selected method
+                for method in tester.get('methods_tested', []):
+                    if method.get('method_id') == selected_id:
+                        result.append(f"  Avg MAE: {method.get('avg_mae', 'N/A')}")
+                        result.append(f"  Avg RMSE: {method.get('avg_rmse', 'N/A')}")
+                        break
+                
+                logger.info(f"Retrieved winning method {selected_id} from tester output")
+                return "\n".join(result)
+        
+        # ================================================================
+        # PRIORITY 2: Fallback to method proposal (Stage 3.5A)
+        # ================================================================
         proposal_path = STAGE3_5A_OUT_DIR / f"method_proposal_{plan_id}.json"
         if not proposal_path.exists():
             return "Method proposals not found."
 
         proposal = DataPassingManager.load_artifact(proposal_path)
 
-        # Load tester output
-        tester_path = STAGE3_5B_OUT_DIR / f"tester_{plan_id}.json"
+        # Load tester output to get selected method ID
         if not tester_path.exists():
             return "Tester output not found - no method selected."
 
         tester = DataPassingManager.load_artifact(tester_path)
         selected_id = tester.get('selected_method_id')
 
-        # Find the method
+        # Find the method in proposal
         for method in proposal.get('methods_proposed', []):
             if method.get('method_id') == selected_id:
                 result = [
-                    f"=== Selected Method: {selected_id} ===",
+                    f"=== Selected Method: {selected_id} (from Stage 3.5A proposal) ===",
                     f"Name: {method.get('name')}",
                     f"Category: {method.get('category')}",
                     f"Description: {method.get('description')}",

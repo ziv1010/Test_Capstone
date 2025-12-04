@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-04T16:59:32.104132",
-    "checksum": "1b620a337ceab19a",
+    "timestamp": "2025-12-05T01:30:52.216516",
+    "checksum": "de74dfa221292f34",
     "version": "1.0",
     "stage": "stage3_5b",
     "type": "tester_output"
@@ -11,31 +11,77 @@
     "methods_tested": [
       {
         "method_id": "M1",
-        "method_name": "Naive Last Value",
-        "mae": 20480.04,
-        "rmse": 31863.51287969203,
-        "mape": 75.08971823659458,
-        "valid": true
+        "avg_mae": 8.6128,
+        "iterations": [
+          {
+            "mae": 8.6128,
+            "rmse": 10.68,
+            "mape": 86.12
+          }
+        ]
       },
       {
         "method_id": "M2",
-        "method_name": "Linear Regression with Lags",
-        "mae": 803.963001006951,
-        "rmse": 842.7792693908943,
-        "mape": 86.10533424290189,
-        "valid": true
+        "avg_mae": 6.997298,
+        "iterations": [
+          {
+            "mae": 6.997298048421958,
+            "rmse": 8.687979833634582,
+            "mape": 678.9056593087495
+          },
+          {
+            "mae": 6.997298048421958,
+            "rmse": 8.687979833634582,
+            "mape": 678.9056593087495
+          },
+          {
+            "mae": 6.997298048421958,
+            "rmse": 8.687979833634582,
+            "mape": 678.9056593087495
+          }
+        ]
       },
       {
         "method_id": "M3",
-        "method_name": "Random Forest with Lags",
-        "mae": 8503.305150000022,
-        "rmse": 13159.900829936445,
-        "mape": 143.40028803940032,
-        "valid": true
+        "avg_mae": 50.500372,
+        "iterations": [
+          {
+            "mae": 50.5003721649485,
+            "rmse": 117.5292085652092,
+            "mape": 1951.598937185211
+          },
+          {
+            "mae": 50.5003721649485,
+            "rmse": 117.5292085652092,
+            "mape": 1951.598937185211
+          },
+          {
+            "mae": 50.5003721649485,
+            "rmse": 117.5292085652092,
+            "mape": 1951.598937185211
+          }
+        ]
       }
     ],
     "selected_method_id": "M2",
-    "selected_method_name": "Linear Regression with Lags",
-    "selection_rationale": "M2 has the lowest average MAE (803.96) among all valid methods"
+    "selected_method_name": "Linear Regression with Lag Features",
+    "selection_rationale": "M2 achieved the lowest average MAE (6.997298) compared to M1 (8.6128) and M3 (50.500372). M3 performed significantly worse, while M1 showed 23.1% higher error than M2.",
+    "method_comparison_summary": "M2: 6.997298 (BEST)\nM1: 8.612800 (+23.1%)\nM3: 50.500372 (+621.7%)",
+    "winning_method_code": "def predict_linear_regression(train_df, test_df, target_col, **params):\n    import pandas as pd\n    from sklearn.linear_model import LinearRegression\n    # Use lag_1 and rolling_mean_3y as features\n    X_train = train_df[['lag_1', 'rolling_mean_3y']]\n    y_train = train_df[target_col]\n    X_test = test_df[['lag_1', 'rolling_mean_3y']]\n    \n    model = LinearRegression()\n    model.fit(X_train, y_train)\n    predictions = model.predict(X_test)\n    return pd.DataFrame({'predicted': predictions}, index=test_df.index)",
+    "winning_method_hyperparameters": {},
+    "winning_method_libraries": [
+      "pandas",
+      "sklearn.linear_model"
+    ],
+    "data_split_strategy": {
+      "strategy_type": "temporal_column",
+      "date_column": null,
+      "target_column": "Area-2022-23",
+      "train_period": "Years 2015-2021",
+      "validation_period": "Year 2021-2022",
+      "test_period": "Year 2022-2023"
+    },
+    "target_column": "Area-2022-23",
+    "date_column": null
   }
 }

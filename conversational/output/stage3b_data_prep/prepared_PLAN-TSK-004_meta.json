@@ -1,0 +1,37 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-05T14:17:45.185924",
+    "checksum": "97771e1456661a0d",
+    "version": "1.0",
+    "stage": "stage3b",
+    "type": "prepared_data_metadata"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-004",
+    "prepared_file_path": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage3b_data_prep/prepared_PLAN-TSK-004.parquet",
+    "original_row_count": 28,
+    "final_row_count": 28,
+    "columns_created": [
+      "Description",
+      "2018 - 19-Quantity",
+      "2022 - 23-Quantity",
+      "2024 - 25-Quantity",
+      "Crop",
+      "Production-2024-25",
+      "lag_2022_23",
+      "rolling_mean_2y"
+    ],
+    "transformations_applied": [
+      "1. Filtered rice varieties\n2. Imputed numeric nulls with median\n3. Standardized Description to 'Rice'\n4. Joined with production data\n5. Created lag_2022_23 and rolling_mean_2y features\n6. Final null imputation"
+    ],
+    "data_quality_report": {
+      "total_rows": 28,
+      "total_columns": 8,
+      "null_counts": {},
+      "duplicate_rows": 0
+    },
+    "has_no_nulls": true,
+    "ready_for_modeling": true,
+    "quality_notes": "Zero nulls in final dataset (28,8)"
+  }
+}

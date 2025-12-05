@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-05T03:41:41.900865",
-    "checksum": "282322e0f266fc6d",
+    "timestamp": "2025-12-05T14:05:02.606328",
+    "checksum": "8377ab02fd9a3102",
     "version": "1.0",
     "stage": "stage1",
     "type": "dataset_summary"
@@ -320,7 +320,7 @@
     ],
     "candidate_keys": [],
     "file_size_mb": 0.009455680847167969,
-    "created_at": "2025-12-05 03:41:41.900774",
+    "created_at": "2025-12-05 14:05:02.606241",
     "has_datetime_column": false,
     "has_target_candidates": [
       "Area-2015-16",

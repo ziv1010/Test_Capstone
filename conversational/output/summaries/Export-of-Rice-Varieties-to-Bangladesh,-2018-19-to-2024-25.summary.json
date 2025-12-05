@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-05T03:41:41.912698",
-    "checksum": "b45bb22901e4fa24",
+    "timestamp": "2025-12-05T14:05:02.617820",
+    "checksum": "50aa6c59d04799cb",
     "version": "1.0",
     "stage": "stage1",
     "type": "dataset_summary"
@@ -602,7 +602,7 @@
       "2021 - 22-Value (USD)"
     ],
     "file_size_mb": 0.00213623046875,
-    "created_at": "2025-12-05 03:41:41.912589",
+    "created_at": "2025-12-05 14:05:02.617713",
     "has_datetime_column": false,
     "has_target_candidates": [
       "2018 - 19-Quantity",

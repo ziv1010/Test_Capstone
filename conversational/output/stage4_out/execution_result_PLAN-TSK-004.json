@@ -1,0 +1,30 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-05T14:51:06.280733",
+    "checksum": "5ef534a5f9ff7b64",
+    "version": "1.0",
+    "stage": "stage4",
+    "type": "execution_result",
+    "method": "M2",
+    "benchmark_mae": 0.0
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-004",
+    "status": "success",
+    "outputs": {
+      "predictions": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage4_out/results_PLAN-TSK-004.parquet"
+    },
+    "metrics": {
+      "mae": 6.763013372754828,
+      "rmse": 9.71466993910948,
+      "mape": 1445.2907880160226,
+      "r2": 0.9985984705506389
+    },
+    "summary": "Executed M2 (MAE: 6.7630)",
+    "errors": [],
+    "detailed_log": null,
+    "data_shape": null,
+    "execution_time_seconds": null,
+    "created_at": "2025-12-05 14:51:06.280632"
+  }
+}

@@ -134,19 +134,42 @@ def explore_data_relationships(summary_files: str = "") -> str:
     Args:
         summary_files: Comma-separated list of summary filenames.
                        If empty, automatically uses ALL available summaries.
+                       NOTE: If filenames contain commas, pass empty string to use all files.
 
     Returns:
         Analysis of potential joins and relationships between datasets
     """
     try:
+        # Get all available summary files first
+        all_available = list_summary_files(SUMMARIES_DIR)
+        if not all_available:
+            return "No summary files found. Run Stage 1 first."
+        
         # If no files specified, use all available summaries
         if not summary_files or summary_files.strip() == "":
-            all_files = list_summary_files(SUMMARIES_DIR)
-            if not all_files:
-                return "No summary files found. Run Stage 1 first."
-            files = all_files
+            files = all_available
+            logger.debug(f"Using all {len(files)} available summary files")
         else:
-            files = [f.strip() for f in summary_files.split(',')]
+            # Try to match against available files to handle commas in filenames
+            # This is more robust than naive comma splitting
+            files = []
+            remaining = summary_files.strip()
+            
+            # Sort by length descending to match longer filenames first
+            sorted_available = sorted(all_available, key=len, reverse=True)
+            
+            for avail_file in sorted_available:
+                if avail_file in remaining:
+                    files.append(avail_file)
+                    # Remove the matched filename from remaining string
+                    remaining = remaining.replace(avail_file, '', 1)
+            
+            # If we couldn't match any files, fall back to all files
+            if not files:
+                logger.warning(f"Could not match any files from input '{summary_files}', using all available")
+                files = all_available
+            
+            logger.debug(f"Matched {len(files)} files from input")
 
         summaries = {}
         # Map summary filename to actual data filename
@@ -159,8 +182,9 @@ def explore_data_relationships(summary_files: str = "") -> str:
                 summaries[f] = data
                 # Store the actual data filename (CSV, not summary.json)
                 filename_map[f] = data.get('filename', f.replace('.summary.json', ''))
-            except:
-                return f"Could not read: {f}"
+            except Exception as e:
+                logger.warning(f"Could not read summary file {f}: {e}")
+                continue  # Skip this file instead of failing entirely
 
         if len(summaries) < 2:
             return "Need at least 2 datasets to explore relationships."
@@ -392,11 +416,26 @@ def save_task_proposals(proposals_json: str) -> str:
         Confirmation with saved path
     """
     try:
+        logger.info("=" * 40)
+        logger.info("save_task_proposals tool called")
+        logger.info("=" * 40)
+
+        # Log the first 500 chars of input for debugging
+        logger.debug(f"Received proposals_json (first 500 chars): {proposals_json[:500] if proposals_json else 'None'}...")
+
         proposals = json.loads(proposals_json)
 
         # Validate structure
         if 'proposals' not in proposals:
+            logger.error("Error: JSON must contain 'proposals' key")
             return "Error: JSON must contain 'proposals' key"
+
+        n_proposals = len(proposals.get('proposals', []))
+        logger.info(f"Parsed {n_proposals} proposals from JSON")
+
+        # Log each proposal ID and title
+        for p in proposals.get('proposals', []):
+            logger.debug(f"  - {p.get('id', 'N/A')}: {p.get('title', 'N/A')}")
 
         # Save using DataPassingManager for robust saving
         output_path = DataPassingManager.save_artifact(
@@ -406,12 +445,23 @@ def save_task_proposals(proposals_json: str) -> str:
             metadata={"stage": "stage2", "type": "task_proposals"}
         )
 
-        n_proposals = len(proposals.get('proposals', []))
-        return f"Saved {n_proposals} task proposals to: {output_path}"
+        logger.info(f"✅ Saved {n_proposals} task proposals to: {output_path}")
+        
+        # Verify the file was saved
+        if output_path.exists():
+            logger.debug(f"Verified: File exists at {output_path}")
+        else:
+            logger.error(f"WARNING: File was not created at {output_path}")
+
+        return f"SUCCESS: Saved {n_proposals} task proposals to: {output_path}"
 
     except json.JSONDecodeError as e:
+        logger.error(f"Error: Invalid JSON - {e}")
         return f"Error: Invalid JSON - {e}"
     except Exception as e:
+        logger.error(f"Error saving proposals: {e}")
+        import traceback
+        logger.debug(f"Traceback: {traceback.format_exc()}")
         return f"Error saving proposals: {e}"
 
 

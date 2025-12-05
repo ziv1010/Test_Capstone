@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "timestamp": "2025-12-05T03:44:36.101699",
-    "checksum": "8529f4e147a994d1",
+    "timestamp": "2025-12-05T14:07:35.390253",
+    "checksum": "7e3a0a166716eaad",
     "version": "1.0",
     "stage": "stage2",
     "type": "task_proposals"
@@ -11,82 +11,112 @@
       {
         "id": "TSK-001",
         "category": "forecasting",
-        "title": "Forecast Rice Exports to Bangladesh",
-        "problem_statement": "Predict future rice export quantities to Bangladesh by variety using historical data from 2018-19 to 2024-25",
+        "title": "Forecast Rice Production by Season",
+        "problem_statement": "Predict annual rice production for Kharif and Rabi seasons using historical area and yield data from 2020-2024",
         "required_datasets": [
-          "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.summary.json"
+          "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv"
         ],
-        "target_column": "2024 - 25-Quantity",
-        "target_dataset": "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.summary.json",
+        "target_column": "Production-2024-25",
+        "target_dataset": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
         "feature_columns": [
-          "Description",
-          "2020 - 21-Quantity",
-          "2021 - 22-Quantity"
+          "Area-2020-21",
+          "Yield-2023-24",
+          "Season"
         ],
-        "feasibility_score": 0.6
+        "join_plan": null,
+        "feasibility_score": 0.85
       },
       {
         "id": "TSK-002",
         "category": "regression",
-        "title": "Predict Crop Yield by Season",
-        "problem_statement": "Estimate food grain yield based on historical area and production data across Kharif/Rabi seasons",
+        "title": "Predict Crop Yield by Region",
+        "problem_statement": "Estimate crop yield using area and production data across different seasons",
         "required_datasets": [
-          "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.summary.json"
+          "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
+          "All-India-profile_-Crop-wise-Area.csv"
         ],
         "target_column": "Yield-2024-25",
-        "target_dataset": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.summary.json",
+        "target_dataset": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
         "feature_columns": [
-          "Crop",
-          "Season",
-          "Area-2024-25"
+          "Area-2023-24",
+          "Production-2022-23",
+          "Season"
         ],
-        "feasibility_score": 0.8
+        "join_plan": {
+          "datasets": [
+            "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
+            "All-India-profile_-Crop-wise-Area.csv"
+          ],
+          "join_keys": {
+            "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv": "Crop",
+            "All-India-profile_-Crop-wise-Area.csv": "Crop"
+          },
+          "join_type": "inner"
+        },
+        "feasibility_score": 0.78
       },
       {
         "id": "TSK-003",
         "category": "classification",
-        "title": "Classify High-Yield Crops",
-        "problem_statement": "Identify crops with above-average yield using historical production data",
+        "title": "Classify Crops by Production Potential",
+        "problem_statement": "Categorize crops into high/medium/low production potential based on historical trends",
         "required_datasets": [
-          "All-India-profile_-Crop-wise-Area.summary.json"
+          "All-India-profile_-Crop-wise-Area.csv"
         ],
-        "target_column": "High-Yield-Category",
-        "target_dataset": "All-India-profile_-Crop-wise-Area.summary.json",
+        "target_column": "Area-2024-25",
+        "target_dataset": "All-India-profile_-Crop-wise-Area.csv",
         "feature_columns": [
-          "Crop",
-          "Yield-2022-23"
+          "Area-2020-21",
+          "Area-2022-23",
+          "Season"
         ],
-        "feasibility_score": 0.7
+        "join_plan": null,
+        "feasibility_score": 0.72
       },
       {
         "id": "TSK-004",
-        "category": "factor-based",
-        "title": "Analyze Seasonal Production Patterns",
-        "problem_statement": "Compare food grain production across Kharif, Rabi, and Summer seasons",
+        "category": "regression",
+        "title": "Analyze Export Trends by Rice Variety",
+        "problem_statement": "Quantify export volume relationships for different rice varieties to Bangladesh",
         "required_datasets": [
-          "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.summary.json"
+          "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.csv",
+          "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv"
         ],
-        "target_column": "Production-2024-25",
-        "target_dataset": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.summary.json",
+        "target_column": "2024 - 25-Quantity",
+        "target_dataset": "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.csv",
         "feature_columns": [
-          "Season"
+          "2022 - 23-Quantity",
+          "Description"
         ],
-        "feasibility_score": 0.9
+        "join_plan": {
+          "datasets": [
+            "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.csv",
+            "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv"
+          ],
+          "join_keys": {
+            "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.csv": "Description",
+            "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv": "Crop"
+          },
+          "join_type": "left"
+        },
+        "feasibility_score": 0.65
       },
       {
         "id": "TSK-005",
-        "category": "factor-based",
-        "title": "Compare Rice Export Values by Variety",
-        "problem_statement": "Stratify rice exports to Bangladesh by variety type",
+        "category": "regression",
+        "title": "Compare Regional Production Efficiency",
+        "problem_statement": "Assess production efficiency differences across crop seasons using area and yield metrics",
         "required_datasets": [
-          "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.summary.json"
+          "All-India-profile_-Crop-wise-Area.csv"
         ],
-        "target_column": "2024 - 25-Value (USD)",
-        "target_dataset": "Export-of-Rice-Varieties-to-Bangladesh,-2018-19-to-2024-25.summary.json",
+        "target_column": "Area-2024-25",
+        "target_dataset": "All-India-profile_-Crop-wise-Area.csv",
         "feature_columns": [
-          "Description"
+          "Area-2023-24",
+          "Season"
         ],
-        "feasibility_score": 0.75
+        "join_plan": null,
+        "feasibility_score": 0.76
       }
     ]
   }

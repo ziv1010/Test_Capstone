@@ -1,0 +1,27 @@
+
+═══════════════════════════════════════════════════════════════
+TASK: Quantify export volume relationships for different rice varieties to Bangladesh
+═══════════════════════════════════════════════════════════════
+
+📊 KEY FINDINGS:
+1. Model achieved near-perfect R² (0.9986) but extremely high MAPE (1445.29%)
+2. Residuals show normal distribution with mean=0.0000 and std=9.8929
+3. No outliers detected (>3σ)
+4. Predictions closely follow actual values in absolute terms
+
+✅ ANSWER TO TASK:
+The model successfully captures export volume relationships for rice varieties to Bangladesh with high accuracy (R²=0.9986). However, the extremely high MAPE (1445.29%) indicates percentage errors are problematic, likely due to small actual values causing large relative errors. The model performs well in absolute terms but caution is needed when interpreting percentage accuracy.
+
+📈 MODEL PERFORMANCE:
+  • MAE: 6.7630
+  • RMSE: 9.7147
+  • MAPE: 1445.2908
+  • R2: 0.9986
+
+💡 RECOMMENDATIONS:
+1. Investigate data points with near-zero actual values contributing to high MAPE
+2. Consider alternative error metrics for low-volume scenarios
+3. Validate model performance on rice varieties with different volume ranges
+4. Explore model calibration for percentage error reduction
+
+═══════════════════════════════════════════════════════════════

@@ -1,0 +1,44 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-05T14:52:49.164287",
+    "checksum": "5e61ab8c2cb87c36",
+    "version": "1.0",
+    "stage": "stage5",
+    "type": "visualization_report"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-004",
+    "visualizations": [
+      {
+        "filepath": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage5_out/actual_vs_predicted.png",
+        "plot_type": "scatter",
+        "title": "Actual vs Predicted Export Volumes",
+        "description": "Comparison of actual and predicted values for 2024-25 rice exports to Bangladesh",
+        "columns_used": [
+          "actual",
+          "predicted"
+        ],
+        "filename": "actual_vs_predicted.png"
+      },
+      {
+        "filepath": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage5_out/residuals_histogram.png",
+        "plot_type": "histogram",
+        "title": "Residual Distribution",
+        "description": "Histogram of prediction residuals (actual - predicted) showing normal distribution",
+        "columns_used": [
+          "actual",
+          "predicted"
+        ],
+        "filename": "residuals_histogram.png"
+      }
+    ],
+    "insights": [
+      "Model achieved near-perfect R² (0.9986) but extremely high MAPE (1445.29%)",
+      "Residuals show normal distribution with mean=0.0000 and std=9.8929",
+      "No outliers detected (>3σ)",
+      "Predictions closely follow actual values in absolute terms"
+    ],
+    "summary": "Model demonstrates excellent absolute accuracy but problematic percentage errors. High R² indicates strong fit while high MAPE suggests issues with small actual values causing large relative errors.",
+    "task_answer": "The model successfully captures export volume relationships for rice varieties to Bangladesh with high accuracy (R²=0.9986). However, the extremely high MAPE (1445.29%) indicates percentage errors are problematic, likely due to small actual values causing large relative errors. The model performs well in absolute terms but caution is needed when interpreting percentage accuracy."
+  }
+}

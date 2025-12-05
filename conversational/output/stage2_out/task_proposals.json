@@ -1,10 +1,8 @@
 {
   "_meta": {
-    "timestamp": "2025-12-05T14:07:35.390253",
-    "checksum": "7e3a0a166716eaad",
-    "version": "1.0",
-    "stage": "stage2",
-    "type": "task_proposals"
+    "timestamp": "2025-12-05T15:46:35.634187",
+    "checksum": "fa559bf73ec02383",
+    "version": "1.0"
   },
   "data": {
     "proposals": [
@@ -117,6 +115,29 @@
         ],
         "join_plan": null,
         "feasibility_score": 0.76
+      },
+      {
+        "id": "TSK-9795",
+        "category": "forecasting",
+        "title": "Custom Forecasting: Area-2024-25",
+        "problem_statement": "Compare Regional Production Efficiency by analyzing Area-2024-25 using historical crop data",
+        "required_datasets": [
+          "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv"
+        ],
+        "target_column": "Area-2024-25",
+        "target_dataset": "All-India-Estimates-of-Area,-Production-&-Yield-of-Food-Grains.csv",
+        "feature_columns": [],
+        "validation_plan": {
+          "train_fraction": 0.7,
+          "validation_fraction": 0.15,
+          "test_fraction": 0.15,
+          "split_strategy": "random",
+          "date_column": ""
+        },
+        "feasibility_score": 0.7,
+        "feasibility_notes": "Custom task created from user query: Compare Regional Production Efficiency by analyzing Area-2024-25 using historical crop data",
+        "forecast_horizon": 30,
+        "forecast_granularity": "sequential"
       }
     ]
   }

@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-05T16:03:51.066621",
+    "checksum": "851d61d21ab348d2",
+    "version": "1.0",
+    "stage": "stage4",
+    "type": "execution_result"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-005",
+    "status": "success",
+    "outputs": {
+      "predictions": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage4_out/results_PLAN-TSK-005.parquet"
+    },
+    "metrics": {
+      "mae": 0.0,
+      "rmse": 0.0,
+      "mape": 0.0,
+      "r2": 1.0
+    },
+    "summary": "Generated predictions for 5 samples",
+    "data_shape": [
+      5,
+      8
+    ]
+  }
+}

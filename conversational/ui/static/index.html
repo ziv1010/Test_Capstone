@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Data Pipeline</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header with Stage Progress -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                    </svg>
+                </div>
+                <span class="brand-name">AI Data Pipeline</span>
+            </div>
+
+            <!-- Stage Progress Bar -->
+            <div class="stage-progress">
+                <div class="stage-chip" data-stage="stage1" data-tooltip="Stage 1: Data Analysis">
+                    <span class="stage-number">1</span>
+                    <span class="stage-label">Analyze</span>
+                </div>
+                <div class="stage-connector"></div>
+                <div class="stage-chip" data-stage="stage2" data-tooltip="Stage 2: Task Proposal">
+                    <span class="stage-number">2</span>
+                    <span class="stage-label">Propose</span>
+                </div>
+                <div class="stage-connector"></div>
+                <div class="stage-chip" data-stage="stage3" data-tooltip="Stage 3: Planning">
+                    <span class="stage-number">3</span>
+                    <span class="stage-label">Plan</span>
+                </div>
+                <div class="stage-connector"></div>
+                <div class="stage-chip" data-stage="stage3b" data-tooltip="Stage 3B: Data Preparation">
+                    <span class="stage-number">3B</span>
+                    <span class="stage-label">Prep</span>
+                </div>
+                <div class="stage-connector"></div>
+                <div class="stage-chip" data-stage="stage3_5a" data-tooltip="Stage 3.5A: Method Selection">
+                    <span class="stage-number">3.5A</span>
+                    <span class="stage-label">Methods</span>
+                </div>
+                <div class="stage-connector"></div>
+                <div class="stage-chip" data-stage="stage3_5b" data-tooltip="Stage 3.5B: Benchmarking">
+                    <span class="stage-number">3.5B</span>
+                    <span class="stage-label">Benchmark</span>
+                </div>
+                <div class="stage-connector"></div>
+                <div class="stage-chip" data-stage="stage4" data-tooltip="Stage 4: Execution">
+                    <span class="stage-number">4</span>
+                    <span class="stage-label">Execute</span>
+                </div>
+                <div class="stage-connector"></div>
+                <div class="stage-chip" data-stage="stage5" data-tooltip="Stage 5: Visualization">
+                    <span class="stage-number">5</span>
+                    <span class="stage-label">Visualize</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="status-indicator" id="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Ready</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Left Panel: Chat -->
+            <section class="chat-panel">
+                <div class="panel-header">
+                    <h2>💬 Conversation</h2>
+                    <button class="btn-icon" id="clear-chat" title="Clear chat">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message assistant">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-content">
+                            <p>Hello! I'm your AI Data Assistant. I can help you:</p>
+                            <ul>
+                                <li>Analyze your datasets</li>
+                                <li>Propose forecasting tasks</li>
+                                <li>Execute ML pipelines</li>
+                                <li>Generate visualizations</li>
+                            </ul>
+                            <p>Try asking: <em>"What data do we have?"</em> or <em>"What tasks can I run?"</em></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <div class="quick-actions">
+                        <button class="quick-btn" data-message="What data is available?">📊 Data</button>
+                        <button class="quick-btn" data-message="Show available tasks">📋 Tasks</button>
+                        <button class="quick-btn" data-message="What is the pipeline status?">🔄 Status</button>
+                    </div>
+                    <div class="input-row">
+                        <input type="text" id="user-input" placeholder="Ask a question or give a command..."
+                            autocomplete="off">
+                        <button id="send-btn" class="send-button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Details/Output -->
+            <section class="details-panel">
+                <div class="panel-header">
+                    <h2 id="details-title">📁 Stage Details</h2>
+                    <div class="panel-actions">
+                        <button class="btn-icon" id="refresh-btn" title="Refresh">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15">
+                                </path>
+                            </svg>
+                        </button>
+                        <button class="btn-icon" id="expand-btn" title="Expand">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="details-content" id="details-content">
+                    <div class="welcome-card">
+                        <div class="welcome-icon">🎯</div>
+                        <h3>Welcome to the AI Pipeline</h3>
+                        <p>Click on any stage in the header to view its output, thoughts, and details.</p>
+                        <div class="feature-list">
+                            <div class="feature-item">
+                                <span class="feature-icon">📊</span>
+                                <span>View stage outputs</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">🧠</span>
+                                <span>See model reasoning</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feature-icon">📈</span>
+                                <span>Explore visualizations</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs for different views -->
+                <div class="details-tabs" id="details-tabs" style="display: none;">
+                    <button class="tab-btn active" data-tab="output">Output</button>
+                    <button class="tab-btn" data-tab="thoughts">Thoughts</button>
+                    <button class="tab-btn" data-tab="code">Code</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for expanded view -->
+    <div class="modal" id="expand-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Details</h3>
+                <button class="btn-icon modal-close" id="modal-close">✕</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

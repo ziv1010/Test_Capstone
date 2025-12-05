@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-05T15:53:29.261712",
+    "checksum": "c30a9abbe93a2f6d",
+    "version": "1.0",
+    "stage": "stage3b",
+    "type": "prepared_data_metadata"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-005",
+    "prepared_file_path": "/scratch/ziv_baretto/conversational_agent/Test_Capstone/conversational/output/stage3b_data_prep/prepared_PLAN-TSK-005.parquet",
+    "original_row_count": 67,
+    "final_row_count": 67,
+    "columns_created": [
+      "Crop",
+      "Area-2023-24",
+      "Area-2024-25",
+      "area_change",
+      "Season_Rabi",
+      "Season_Summer"
+    ],
+    "transformations_applied": [
+      "1. Filtered out 'Total' season\n2. Imputed numeric columns with median\n3. One-hot encoded 'Season' with drop_first=True"
+    ],
+    "data_quality_report": {
+      "total_rows": 67,
+      "total_columns": 6,
+      "null_counts": {},
+      "duplicate_rows": 0
+    },
+    "has_no_nulls": true,
+    "ready_for_modeling": true,
+    "quality_notes": "Zero nulls in final dataset (67,6)"
+  }
+}

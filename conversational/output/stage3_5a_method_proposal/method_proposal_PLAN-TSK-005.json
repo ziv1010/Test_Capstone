@@ -1,0 +1,94 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-05T15:56:51.952794",
+    "checksum": "1bf29b5912371a65",
+    "version": "1.0",
+    "stage": "stage3_5a",
+    "type": "method_proposal"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-005",
+    "methods_proposed": [
+      {
+        "method_id": "M1",
+        "name": "Naive Forecast",
+        "category": "baseline",
+        "description": "Predicts 2024-25 area using 2023-24 area as baseline",
+        "implementation_code": "def predict_naive(train_df, test_df, target_col, date_col, **params):\n    import pandas as pd\n    predictions = test_df['Area-2023-24'].copy()\n    return pd.DataFrame({'predicted': predictions}, index=test_df.index)",
+        "required_libraries": [
+          "pandas"
+        ],
+        "hyperparameters": {},
+        "expected_strengths": [
+          "Simple baseline for comparison",
+          "Zero computational cost"
+        ],
+        "expected_weaknesses": [
+          "Ignores all other features",
+          "No trend/seasonality handling"
+        ]
+      },
+      {
+        "method_id": "M2",
+        "name": "Linear Regression",
+        "category": "statistical/traditional",
+        "description": "Linear model using 2023-24 area and season features",
+        "implementation_code": "def predict_linear_regression(train_df, test_df, target_col, date_col, **params):\n    import pandas as pd\n    from sklearn.linear_model import LinearRegression\n    from sklearn.preprocessing import OneHotEncoder\n    from sklearn.compose import ColumnTransformer\n\n    # Features\n    features = ['Area-2023-24', 'Season_Rabi', 'Season_Summer', 'Crop']\n\n    # Preprocessing\n    preprocessor = ColumnTransformer(\n        transformers=[\n            ('num', 'passthrough', ['Area-2023-24', 'Season_Rabi', 'Season_Summer']),\n            ('cat', OneHotEncoder(handle_unknown='ignore'), ['Crop'])\n        ])\n\n    X_train = preprocessor.fit_transform(train_df[features])\n    y_train = train_df[target_col]\n\n    model = LinearRegression()\n    model.fit(X_train, y_train)\n\n    X_test = preprocessor.transform(test_df[features])\n    predictions = model.predict(X_test)\n\n    return pd.DataFrame({'predicted': predictions}, index=test_df.index)",
+        "required_libraries": [
+          "pandas",
+          "sklearn.linear_model",
+          "sklearn.preprocessing",
+          "sklearn.compose"
+        ],
+        "hyperparameters": {
+          "fit_intercept": true
+        },
+        "expected_strengths": [
+          "Interpretable coefficients",
+          "Handles seasonality",
+          "Uses all available features"
+        ],
+        "expected_weaknesses": [
+          "Assumes linear relationships",
+          "May underfit complex patterns"
+        ]
+      },
+      {
+        "method_id": "M3",
+        "name": "Random Forest",
+        "category": "ml",
+        "description": "Ensemble model with feature engineering",
+        "implementation_code": "def predict_random_forest(train_df, test_df, target_col, date_col, **params):\n    import pandas as pd\n    from sklearn.ensemble import RandomForestRegressor\n    from sklearn.preprocessing import OneHotEncoder\n    from sklearn.compose import ColumnTransformer\n\n    # Features\n    features = ['Area-2023-24', 'Season_Rabi', 'Season_Summer', 'Crop']\n\n    # Preprocessing\n    preprocessor = ColumnTransformer(\n        transformers=[\n            ('num', 'passthrough', ['Area-2023-24', 'Season_Rabi', 'Season_Summer']),\n            ('cat', OneHotEncoder(handle_unknown='ignore'), ['Crop'])\n        ])\n\n    X_train = preprocessor.fit_transform(train_df[features])\n    y_train = train_df[target_col]\n\n    model = RandomForestRegressor(n_estimators=100, random_state=42)\n    model.fit(X_train, y_train)\n\n    X_test = preprocessor.transform(test_df[features])\n    predictions = model.predict(X_test)\n\n    return pd.DataFrame({'predicted': predictions}, index=test_df.index)",
+        "required_libraries": [
+          "pandas",
+          "sklearn.ensemble",
+          "sklearn.preprocessing",
+          "sklearn.compose"
+        ],
+        "hyperparameters": {
+          "n_estimators": 100,
+          "random_state": 42
+        },
+        "expected_strengths": [
+          "Captures non-linear patterns",
+          "Handles feature interactions",
+          "Robust to outliers"
+        ],
+        "expected_weaknesses": [
+          "Less interpretable",
+          "Higher computational cost"
+        ]
+      }
+    ],
+    "data_split_strategy": {
+      "strategy_type": "temporal_column",
+      "date_column": null,
+      "target_column": "Area-2024-25",
+      "train_period": "Using 2023-24 area to predict 2024-25",
+      "validation_period": "Same column-wise split as training",
+      "test_period": "Predicting 2024-25 using 2023-24 data"
+    },
+    "date_column": null,
+    "target_column": "Area-2024-25"
+  }
+}

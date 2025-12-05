@@ -1,0 +1,70 @@
+{
+  "_meta": {
+    "timestamp": "2025-12-05T15:51:41.276808",
+    "checksum": "558c75c823ea6615",
+    "version": "1.0",
+    "stage": "stage3",
+    "type": "execution_plan"
+  },
+  "data": {
+    "plan_id": "PLAN-TSK-005",
+    "selected_task_id": "TSK-005",
+    "goal": "Assess production efficiency differences across crop seasons using area and yield metrics",
+    "task_category": "regression",
+    "file_instructions": [
+      {
+        "filename": "All-India-profile_-Crop-wise-Area.csv",
+        "filepath": "data/",
+        "columns_to_use": [
+          "Crop",
+          "Season",
+          "Area-2023-24",
+          "Area-2024-25"
+        ],
+        "filters": [
+          "Season not in ['Total']"
+        ],
+        "date_column": null,
+        "parse_dates": []
+      }
+    ],
+    "join_steps": [],
+    "feature_engineering": [
+      {
+        "name": "area_change",
+        "description": "Difference between 2024-25 and 2023-24 area",
+        "source_columns": [
+          "Area-2024-25",
+          "Area-2023-24"
+        ],
+        "implementation_code": "df['area_change'] = df['Area-2024-25'] - df['Area-2023-24']",
+        "dtype": null
+      },
+      {
+        "name": "season_encoded",
+        "description": "One-hot encoding of crop season",
+        "source_columns": [
+          "Season"
+        ],
+        "implementation_code": "df = pd.get_dummies(df, columns=['Season'], drop_first=True)",
+        "dtype": null
+      }
+    ],
+    "target_column": "Area-2024-25",
+    "date_column": null,
+    "validation_strategy": "random",
+    "train_end_date": null,
+    "validation_end_date": null,
+    "expected_model_types": [
+      "linear_regression",
+      "random_forest"
+    ],
+    "evaluation_metrics": [
+      "rmse",
+      "r2_score"
+    ],
+    "output_columns": [],
+    "artifacts_to_save": [],
+    "created_at": "2025-12-05T15:51:41.276620"
+  }
+}
